@@ -42,7 +42,7 @@ L'application suit une architecture **Modèle-Vue-Contrôleur (MVC)** pour sépa
 1. Clonez le dépôt Git :
    ```bash
    git clone https://github.com/Gawdamn/chiffrement_AES.git
-   cd interface_AES
+   cd chiffrement_AES
    ```
 2. Assurez-vous que les dépendances suivantes sont installées :
    - Qt 5
