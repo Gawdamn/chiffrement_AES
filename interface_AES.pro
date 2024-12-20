@@ -10,13 +10,16 @@ CONFIG += c++17
 
 SOURCES += \
     src/main.cpp \
-    src/mainwindow.cpp
+    src/mainwindow.cpp \
+    src/passworddialog.cpp
 
 HEADERS += \
-    headers/mainwindow.h
+    headers/mainwindow.h \
+    headers/passworddialog.h
 
 FORMS += \
-    UI/mainwindow.ui
+    UI/mainwindow.ui \
+    UI/passworddialog.ui
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

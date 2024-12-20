@@ -33,30 +33,26 @@
       </item>
      </layout>
     </item>
-    <item row="3" column="0">
-     <layout class="QVBoxLayout" name="verticalLayout">
+    <item row="1" column="0">
+     <layout class="QHBoxLayout" name="horizontalLayout_2">
       <item>
-       <spacer name="verticalSpacer">
-        <property name="orientation">
-         <enum>Qt::Orientation::Vertical</enum>
+       <widget class="QLabel" name="passwordDisplayLabel">
+        <property name="font">
+         <font>
+          <italic>true</italic>
+          <bold>true</bold>
+         </font>
         </property>
-        <property name="sizeHint" stdset="0">
-         <size>
-          <width>20</width>
-          <height>40</height>
-         </size>
-        </property>
-       </spacer>
-      </item>
-      <item>
-       <widget class="QLabel" name="label">
         <property name="text">
-         <string>Mot de passe :</string>
+         <string>le MDP s'affichera ici</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignmentFlag::AlignCenter</set>
+        </property>
+        <property name="indent">
+         <number>-1</number>
         </property>
        </widget>
-      </item>
-      <item>
-       <widget class="QLineEdit" name="PasswordlineEdit"/>
       </item>
      </layout>
     </item>
