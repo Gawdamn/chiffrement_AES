@@ -36,8 +36,6 @@ L'application suit une architecture **Modèle-Vue-Contrôleur (MVC)** pour sépa
 - **Bibliothèque de chiffrement** : OpenSSL.
 - **IDE** : Qt Creator.
 
-Pour une vue d'ensemble détaillée des spécifications, consultez le document [Spécifications du projet](doc_sp%C3%A9cifications_projet.md).
-
 ---
 
 ## **Instructions pour l'installation et l'exécution**
