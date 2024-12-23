@@ -2,14 +2,17 @@
 #include "ui_mainwindow.h"
 #include <QFileDialog>
 #include <QMessageBox>
-#include "src/passworddialog.h"
+#include "headers/passworddialog.h"
 #include <QDialog>
+#include <openssl/evp.h>
+#include <openssl/rand.h>
 
-MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent)
-    , ui(new Ui::MainWindow)
+MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+
+    // appel à la fonction test d'OpenSSL
+    testOpenSSL();
 }
 
 MainWindow::~MainWindow()
@@ -32,6 +35,9 @@ void MainWindow::on_encryptButton_clicked()
     if (fileName.isEmpty())
         return;
 
+    //affichage du fichier sélectionné sur l'interface principale
+    ui->fileLabel->setText("Fichier sélectionné : " + fileName);
+
     // Ouvrir la fenêtre pour saisir le mot de passe
     PasswordDialog passwordDialog(this);
     if (passwordDialog.exec() == QDialog::Accepted) {
@@ -44,10 +50,7 @@ void MainWindow::on_encryptButton_clicked()
         }
 
         // TEST : Afficher le mot de passe pour voir si la récupération se fait correctement
-        ui->passwordDisplayLabel->setText("Mot de passe saisi : " + password);
-
-        // Effacer l'affichage du mot de passe après l'utilisation
-        //ui->passwordDisplayLabel->clear();
+        // ui->passwordDisplayLabel->setText("Mot de passe saisi : " + password);
 
         // Appeler la fonction pour chiffrer le fichier
         //encryptFile(fileName, password);
@@ -67,6 +70,8 @@ void MainWindow::on_decryptButton_clicked()
     if (fileName.isEmpty())
         return;
 
+    //affichage du fichier sélectionné sur l'interface principale
+    ui->fileLabel->setText("Fichier sélectionné : " + fileName);
 
     // Ouvrir la fenêtre pour saisir le mot de passe
     PasswordDialog passwordDialog(this);
@@ -87,3 +92,18 @@ void MainWindow::on_decryptButton_clicked()
     }
 }
 
+
+void MainWindow::testOpenSSL()  //mini-fonction test pour voir si openSSL fonctionne correctement dans mon projet
+{
+    unsigned char key[32]; // AES-256 key size
+
+    if (RAND_bytes(key, sizeof(key))) {
+        qDebug("Key generated successfully:");  // la sortie se fait au niveaudu terminal d'où le projet à été lancé
+                                                // (ne fonctionne pas si on lance le projet depuis l'interface Qt Creator)
+        for (size_t i = 0; i < sizeof(key); ++i) {
+            qDebug("%02x", key[i]);
+        }
+    } else {
+        qDebug("Failed to generate key.");
+    }
+}

@@ -19,6 +19,10 @@ class PasswordDialog : public QDialog
 
     private:
         Ui::PasswordDialog *ui;
+
+    private slots:
+        void on_showPasswordCheckBox_toggled(bool checked);
+
 };
 
 #endif // PASSWORDDIALOG_H

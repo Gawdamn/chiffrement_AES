@@ -26,5 +26,7 @@ private slots:
 
 private:
     Ui::MainWindow *ui;
+
+    void testOpenSSL(); //fonction test pour OpenSSL
 };
 #endif // MAINWINDOW_H

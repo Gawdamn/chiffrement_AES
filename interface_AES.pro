@@ -28,3 +28,6 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 
 RESOURCES += \
     resources/resources.qrc
+
+LIBS += -lssl -lcrypto
+INCLUDEPATH += /usr/include/openssl

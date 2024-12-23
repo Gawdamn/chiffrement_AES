@@ -36,21 +36,12 @@
     <item row="1" column="0">
      <layout class="QHBoxLayout" name="horizontalLayout_2">
       <item>
-       <widget class="QLabel" name="passwordDisplayLabel">
-        <property name="font">
-         <font>
-          <italic>true</italic>
-          <bold>true</bold>
-         </font>
-        </property>
+       <widget class="QLabel" name="fileLabel">
         <property name="text">
-         <string>le MDP s'affichera ici</string>
+         <string>fichier sélectionné :</string>
         </property>
         <property name="alignment">
          <set>Qt::AlignmentFlag::AlignCenter</set>
-        </property>
-        <property name="indent">
-         <number>-1</number>
         </property>
        </widget>
       </item>
