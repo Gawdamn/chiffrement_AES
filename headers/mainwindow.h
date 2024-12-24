@@ -26,7 +26,9 @@ private slots:
 
 private:
     Ui::MainWindow *ui;
+    //void testOpenSSL(); //fonction test pour OpenSSL
+    void encryptFile(const QString &inputFile, const QString &outputFile, const QString &password);
+    void decryptFile(const QString &inputFile, const QString &outputFile, const QString &password);
 
-    void testOpenSSL(); //fonction test pour OpenSSL
 };
 #endif // MAINWINDOW_H
