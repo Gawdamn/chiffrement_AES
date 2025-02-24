@@ -29,6 +29,9 @@ private:
     //void testOpenSSL(); //fonction test pour OpenSSL
     void encryptFile(const QString &inputFile, const QString &outputFile, const QString &password);
     void decryptFile(const QString &inputFile, const QString &outputFile, const QString &password);
+    QByteArray computeFileHash(const QString &filePath);
+    QByteArray m_originalHash;
+
 
 };
 #endif // MAINWINDOW_H

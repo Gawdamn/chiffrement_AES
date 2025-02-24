@@ -4,4 +4,4 @@
 *.exe
 *.dll
 *.so
-interface_AES.pro.user.*
+*.pro.user

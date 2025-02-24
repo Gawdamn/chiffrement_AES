@@ -6,6 +6,11 @@
 #include <QDialog>
 #include <openssl/evp.h>
 #include <openssl/rand.h>
+#include <QTextStream>
+#include <QDebug>
+#include <QFile>
+#include <QCryptographicHash>
+
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow)
 {
@@ -34,6 +39,10 @@ void MainWindow::on_encryptButton_clicked()
     // Vérifier si un fichier a été sélectionné
     if (fileName.isEmpty())
         return;
+
+    // Calculer et stocker le hash du fichier original
+    m_originalHash = computeFileHash(fileName);
+    qDebug() << "Hash original stocké : " << m_originalHash.toHex();
 
     //affichage du fichier sélectionné sur l'interface principale
     ui->fileLabel->setText("Fichier sélectionné : " + fileName);
@@ -90,6 +99,18 @@ void MainWindow::on_decryptButton_clicked()
 
         // Appeler la fonction pour déchiffrer le fichier
         decryptFile(inputFile, outputFile, password);
+
+
+        // Après déchiffrement, calculer le hash du fichier déchiffré
+        QByteArray decryptedHash = computeFileHash(outputFile);
+        qDebug() << "Hash du fichier déchiffré : " << decryptedHash.toHex();
+
+        // Comparer les deux hash
+        if (decryptedHash == m_originalHash) {
+            qDebug() << "Aucune corruption : le fichier déchiffré est identique à l'original.";
+        } else {
+            qDebug() << "Corruption détectée : le fichier déchiffré diffère de l'original.";
+        }
     }
 }
 
@@ -101,13 +122,13 @@ void MainWindow::testOpenSSL()  //mini-fonction test pour voir si openSSL foncti
     unsigned char key[32]; // AES-256 key size
 
     if (RAND_bytes(key, sizeof(key))) {
-        qDebug("Key generated successfully:");  // la sortie se fait au niveaudu terminal d'où le projet à été lancé
+        ////QDebug("Key generated successfully:");  // la sortie se fait au niveaudu terminal d'où le projet à été lancé
                                                 // (ne fonctionne pas si on lance le projet depuis l'interface Qt Creator)
         for (size_t i = 0; i < sizeof(key); ++i) {
-            qDebug("%02x", key[i]);
+            //QDebug("%02x", key[i]);
         }
     } else {
-        qDebug("Failed to generate key.");
+        //QDebug("Failed to generate key.");
     }
 }
 */
@@ -128,7 +149,7 @@ void MainWindow::encryptFile(const QString &inputFile, const QString &outputFile
         QMessageBox::critical(this, "Erreur", "Erreur lors de la génération de l'IV.");
         return;
     }
-    qDebug() << "IV (chiffrement) : " << QByteArray(reinterpret_cast<const char *>(iv), sizeof(iv)).toHex();
+    //QDebug() << "IV (chiffrement) : " << QByteArray(reinterpret_cast<const char *>(iv), sizeof(iv)).toHex();
 
 
     // Dériver une clé à partir du mot de passe en utilisant PBKDF2
@@ -138,7 +159,7 @@ void MainWindow::encryptFile(const QString &inputFile, const QString &outputFile
         QMessageBox::critical(this, "Erreur", "Erreur lors de la génération du sel.");
         return;
     }
-    qDebug() << "Sel (chiffrement) : " << QByteArray(reinterpret_cast<const char *>(salt), sizeof(salt)).toHex();
+    //QDebug() << "Sel (chiffrement) : " << QByteArray(reinterpret_cast<const char *>(salt), sizeof(salt)).toHex();
 
 
     if (!PKCS5_PBKDF2_HMAC(
@@ -154,19 +175,26 @@ void MainWindow::encryptFile(const QString &inputFile, const QString &outputFile
         QMessageBox::critical(this, "Erreur", "Erreur lors de la dérivation de la clé.");
         return;
     }
-    qDebug() << "Clé (chiffrement) : " << QByteArray(reinterpret_cast<const char *>(key), sizeof(key)).toHex();
+    //QDebug() << "Clé (chiffrement) : " << QByteArray(reinterpret_cast<const char *>(key), sizeof(key)).toHex();
 
 
     // Ouvrir les fichiers d'entrée et de sortie
     QFile inFile(inputFile);
     QFile outFile(outputFile);
 
-    if (!inFile.open(QIODevice::ReadOnly)) {
+    if (!inFile.open(QIODevice::ReadOnly | QIODevice::Unbuffered)) {
         QMessageBox::critical(this, "Erreur", "Impossible d'ouvrir le fichier d'entrée.");
         return;
     }
 
-    if (!outFile.open(QIODevice::WriteOnly)) {
+    bool isTextFile = inputFile.endsWith(".txt"); // Vérification basique
+
+    if (isTextFile) {
+        QTextStream in(&inFile);
+        in.setCodec("UTF-8");
+    }
+
+    if (!outFile.open(QIODevice::WriteOnly | QIODevice::Unbuffered)) {
         QMessageBox::critical(this, "Erreur", "Impossible d'ouvrir le fichier de sortie.");
         return;
     }
@@ -207,7 +235,9 @@ void MainWindow::encryptFile(const QString &inputFile, const QString &outputFile
             EVP_CIPHER_CTX_free(ctx);
             return;
         }
-        qDebug() << "Taille des données écrites pour ce bloc (chiffrement) : " << outLen;
+        qDebug() << "Bloc chiffré (hex) : "
+                 << QByteArray(reinterpret_cast<const char *>(outBuffer), outLen).toHex();
+        //QDebug() << "Taille des données écrites pour ce bloc (chiffrement) : " << outLen;
         outFile.write(reinterpret_cast<const char *>(outBuffer), outLen);
     }
 
@@ -217,7 +247,7 @@ void MainWindow::encryptFile(const QString &inputFile, const QString &outputFile
         EVP_CIPHER_CTX_free(ctx);
         return;
     }
-    qDebug() << "Taille des données écrites lors de la finalisation (chiffrement) : " << outLen;
+    //QDebug() << "Taille des données écrites lors de la finalisation (chiffrement) : " << outLen;
     outFile.write(reinterpret_cast<const char *>(outBuffer), outLen);
 
     // Obtenir et écrire le tag d'authentification
@@ -227,10 +257,15 @@ void MainWindow::encryptFile(const QString &inputFile, const QString &outputFile
         EVP_CIPHER_CTX_free(ctx);
         return;
     }
+    qDebug() << "Position actuelle dans le fichier avant écriture du tag : " << outFile.pos();
     outFile.write(reinterpret_cast<const char *>(tag), sizeof(tag));
-    qDebug() << "Tag (chiffrement) : " << QByteArray(reinterpret_cast<const char *>(tag), sizeof(tag)).toHex();
+    qDebug() << "Position après écriture du tag : " << outFile.pos();
+
+    //QDebug() << "Tag (chiffrement) : " << QByteArray(reinterpret_cast<const char *>(tag), sizeof(tag)).toHex();
+    qDebug() << "Tag généré (chiffrement) : " << QByteArray(reinterpret_cast<const char *>(tag), sizeof(tag)).toHex();
 
 
+    qDebug() << "Taille finale du fichier chiffré (encryptFile) : " << outFile.size();
 
     // Nettoyer et fermer les fichiers
     EVP_CIPHER_CTX_free(ctx);
@@ -253,15 +288,24 @@ void MainWindow::decryptFile(const QString &inputFile, const QString &outputFile
     QFile inFile(inputFile);
     QFile outFile(outputFile);
 
-    if (!inFile.open(QIODevice::ReadOnly)) {
+    if (!inFile.open(QIODevice::ReadOnly | QIODevice::Unbuffered)) {
         QMessageBox::critical(this, "Erreur", "Impossible d'ouvrir le fichier chiffré.");
         return;
     }
 
-    if (!outFile.open(QIODevice::WriteOnly)) {
+    if (!outFile.open(QIODevice::WriteOnly | QIODevice::Unbuffered)) {
         QMessageBox::critical(this, "Erreur", "Impossible d'ouvrir le fichier de sortie.");
         return;
     }
+
+
+    bool isTextFile = outputFile.endsWith(".txt");
+
+    if (isTextFile) {
+        QTextStream out(&outFile);
+        out.setCodec("UTF-8");
+    }
+
 
     // Lire le sel
     unsigned char salt[16];
@@ -269,7 +313,6 @@ void MainWindow::decryptFile(const QString &inputFile, const QString &outputFile
         QMessageBox::critical(this, "Erreur", "Erreur lors de la lecture du sel.");
         return;
     }
-    qDebug() << "Sel (déchiffrement) : " << QByteArray(reinterpret_cast<const char *>(salt), sizeof(salt)).toHex();
 
 
     // Lire l'IV
@@ -278,7 +321,6 @@ void MainWindow::decryptFile(const QString &inputFile, const QString &outputFile
         QMessageBox::critical(this, "Erreur", "Erreur lors de la lecture de l'IV.");
         return;
     }
-    qDebug() << "IV (déchiffrement) : " << QByteArray(reinterpret_cast<const char *>(iv), sizeof(iv)).toHex();
 
 
     // Dériver la clé à partir du mot de passe
@@ -295,7 +337,6 @@ void MainWindow::decryptFile(const QString &inputFile, const QString &outputFile
         QMessageBox::critical(this, "Erreur", "Erreur lors de la dérivation de la clé.");
         return;
     }
-    qDebug() << "Clé (déchiffrement) : " << QByteArray(reinterpret_cast<const char *>(key), sizeof(key)).toHex();
 
 
     // Initialiser le contexte de déchiffrement
@@ -311,44 +352,78 @@ void MainWindow::decryptFile(const QString &inputFile, const QString &outputFile
         return;
     }
 
-    // Lire et stocker le tag d'authentification
+
+    qDebug() << "Position actuelle dans le fichier avant lecture du tag : " << inFile.pos();
+    // Se déplacer à la position du tag en utilisant la taille actuelle du fichier
     inFile.seek(inFile.size() - GCM_TAG_LENGTH);
+
     unsigned char tag[GCM_TAG_LENGTH];
     if (inFile.read(reinterpret_cast<char *>(tag), sizeof(tag)) != sizeof(tag)) {
         QMessageBox::critical(this, "Erreur", "Erreur lors de la lecture du tag d'authentification.");
         EVP_CIPHER_CTX_free(ctx);
         return;
     }
+
+    // Définir le tag pour la vérification
     EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_TAG, GCM_TAG_LENGTH, tag);
-    qDebug() << "Tag (déchiffrement) : " << QByteArray(reinterpret_cast<const char *>(tag), sizeof(tag)).toHex();
 
-    // Revenir au début des données chiffrées
-    inFile.seek(sizeof(salt) + sizeof(iv));
+    qDebug() << "Tag lu (déchiffrement) : " << QByteArray(reinterpret_cast<const char *>(tag), sizeof(tag)).toHex();
 
-    // Déchiffrer les données
+
+    // Calculer la longueur du ciphertext.
+    // Le fichier chiffré est structuré comme suit :
+    // [salt (16 octets)] [IV (12 octets)] [ciphertext] [tag (16 octets)]
+    qint64 totalFileSize = inFile.size();
+    const int metadataSize = sizeof(salt) + sizeof(iv) + GCM_TAG_LENGTH;
+    qint64 ciphertextLength = totalFileSize - metadataSize;
+    qint64 totalRead = 0;
+    qDebug() << "Taille totale du fichier chiffré : " << totalFileSize;
+    qDebug() << "Longueur effective du ciphertext : " << ciphertextLength;
+
+
     unsigned char inBuffer[4096];
     unsigned char outBuffer[4096];
-    int bytesRead, bytesWritten;
-    int outLen;
+    int bytesRead, outLen;
 
-    while ((bytesRead = inFile.read(reinterpret_cast<char *>(inBuffer), sizeof(inBuffer))) > 0) {
+    // Revenir au début du ciphertext (après sel et IV)
+    inFile.seek(sizeof(salt) + sizeof(iv));
+
+    while (totalRead < ciphertextLength) {
+        int bytesToRead = qMin(qint64(sizeof(inBuffer)), ciphertextLength - totalRead);
+        bytesRead = inFile.read(reinterpret_cast<char *>(inBuffer), bytesToRead);
+        if (bytesRead <= 0)
+            break;
+
         if (!EVP_DecryptUpdate(ctx, outBuffer, &outLen, inBuffer, bytesRead)) {
             QMessageBox::critical(this, "Erreur", "Erreur lors du déchiffrement des données.");
             EVP_CIPHER_CTX_free(ctx);
             return;
         }
         outFile.write(reinterpret_cast<const char *>(outBuffer), outLen);
+        totalRead += bytesRead;
+        qDebug() << "Déchiffrement en cours, octets traités dans ce bloc : " << outLen;
     }
 
-    // Finaliser le déchiffrement
-    if (!EVP_DecryptFinal_ex(ctx, outBuffer, &outLen)) {
+    qDebug() << "Données chiffrées avant déchiffrement (hex) : "
+             << QByteArray(reinterpret_cast<const char *>(inBuffer), bytesRead).toHex();
+    qDebug() << "Données déchiffrées après EVP_DecryptUpdate (hex) : "
+             << QByteArray(reinterpret_cast<const char *>(outBuffer), outLen).toHex();
+
+
+    int finalOutLen;
+    if (!EVP_DecryptFinal_ex(ctx, outBuffer, &finalOutLen)) {
+        qDebug() << "Erreur : EVP_DecryptFinal_ex a échoué. Taille du dernier bloc : " << finalOutLen;
         QMessageBox::critical(this, "Erreur", "Le mot de passe est incorrect ou les données sont corrompues.");
         EVP_CIPHER_CTX_free(ctx);
         return;
     }
-    outFile.write(reinterpret_cast<const char *>(outBuffer), outLen);
+    qDebug() << "Dernier bloc après EVP_DecryptFinal_ex : " << finalOutLen;
+    outFile.write(reinterpret_cast<const char *>(outBuffer), finalOutLen);
 
-    qDebug() << "Taille des données lues (déchiffrement) : " << bytesRead;
+    qDebug() << "Derniers octets après EVP_DecryptFinal_ex (hex) : "
+             << QByteArray(reinterpret_cast<const char *>(outBuffer), finalOutLen).toHex();
+
+    qDebug() << "Taille finale du fichier déchiffré (decryptFile) : " << outFile.size();
 
     // Nettoyer
     EVP_CIPHER_CTX_free(ctx);
@@ -356,4 +431,25 @@ void MainWindow::decryptFile(const QString &inputFile, const QString &outputFile
     outFile.close();
 
     QMessageBox::information(this, "Succès", "Fichier déchiffré avec succès !");
+}
+
+
+
+
+QByteArray MainWindow::computeFileHash(const QString &filePath)
+{
+    QFile file(filePath);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Unbuffered)) {
+        return QByteArray(); // Fichier introuvable ou impossible à ouvrir
+    }
+
+    QCryptographicHash hash(QCryptographicHash::Sha256);
+
+    while (!file.atEnd()) {
+        QByteArray data = file.read(8192);
+        hash.addData(data);
+    }
+    file.close();
+
+    return hash.result();
 }
