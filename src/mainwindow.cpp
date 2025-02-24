@@ -103,7 +103,6 @@ void MainWindow::on_decryptButton_clicked()
 
         // Après déchiffrement, calculer le hash du fichier déchiffré
         QByteArray decryptedHash = computeFileHash(outputFile);
-        qDebug() << "Hash du fichier déchiffré : " << decryptedHash.toHex();
 
         // Comparer le hash original et le hash du fichier déchiffré
         if (decryptedHash != m_originalHash) {
@@ -359,7 +358,6 @@ void MainWindow::decryptFile(const QString &inputFile, const QString &outputFile
         }
         outFile.write(reinterpret_cast<const char *>(outBuffer), outLen);
         totalRead += bytesRead;
-        qDebug() << "Déchiffrement en cours, octets traités dans ce bloc : " << outLen;
     }
 
 
