@@ -162,13 +162,6 @@ void MainWindow::encryptFile(const QString &inputFile, const QString &outputFile
         return;
     }
 
-    bool isTextFile = inputFile.endsWith(".txt"); // Vérification basique
-
-    if (isTextFile) {
-        QTextStream in(&inFile);
-        in.setCodec("UTF-8");
-    }
-
     if (!outFile.open(QIODevice::WriteOnly | QIODevice::Unbuffered)) {
         QMessageBox::critical(this, "Erreur", "Impossible d'ouvrir le fichier de sortie.");
         return;
