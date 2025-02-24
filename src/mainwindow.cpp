@@ -15,9 +15,6 @@
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-
-    // appel à la fonction test d'OpenSSL
-    // testOpenSSL();
 }
 
 MainWindow::~MainWindow()
@@ -45,7 +42,6 @@ void MainWindow::on_encryptButton_clicked()
 
     // Calculer et stocker le hash du fichier original
     m_originalHash = computeFileHash(fileName);
-    qDebug() << "Hash original stocké : " << m_originalHash.toHex();
 
     //affichage du fichier sélectionné sur l'interface principale
     ui->fileLabel->setText("Fichier sélectionné : " + fileName);
@@ -109,11 +105,9 @@ void MainWindow::on_decryptButton_clicked()
         QByteArray decryptedHash = computeFileHash(outputFile);
         qDebug() << "Hash du fichier déchiffré : " << decryptedHash.toHex();
 
-        // Comparer les deux hash
-        if (decryptedHash == m_originalHash) {
-            qDebug() << "Aucune corruption : le fichier déchiffré est identique à l'original.";
-        } else {
-            qDebug() << "Corruption détectée : le fichier déchiffré diffère de l'original.";
+        // Comparer le hash original et le hash du fichier déchiffré
+        if (decryptedHash != m_originalHash) {
+            QMessageBox::warning(this, "Erreur d'intégrité", "Le fichier déchiffré diffère de l'original.");
         }
     }
 }
