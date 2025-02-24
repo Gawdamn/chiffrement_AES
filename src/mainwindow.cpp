@@ -430,6 +430,20 @@ void MainWindow::decryptFile(const QString &inputFile, const QString &outputFile
     inFile.close();
     outFile.close();
 
+    // Demander à l'utilisateur s'il souhaite conserver le fichier chiffré
+    QMessageBox::StandardButton reply;
+    reply = QMessageBox::question(this, "Conserver le fichier chiffré ?",
+                                  "Voulez-vous conserver le fichier chiffré une fois le déchiffrement terminé ?",
+                                  QMessageBox::Yes | QMessageBox::No);
+
+    if (reply == QMessageBox::No) {
+        if (QFile::remove(inputFile)) {
+            qDebug() << "Le fichier chiffré a été supprimé avec succès.";
+        } else {
+            qDebug() << "Échec de la suppression du fichier chiffré.";
+        }
+    }
+
     QMessageBox::information(this, "Succès", "Fichier déchiffré avec succès !");
 }
 
