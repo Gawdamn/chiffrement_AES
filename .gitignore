@@ -4,5 +4,6 @@
 *.exe
 *.dll
 *.so
+*.pro
 *.pro.user
 *.pro.user.*
