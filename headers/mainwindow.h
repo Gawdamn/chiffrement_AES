@@ -27,7 +27,7 @@ private slots:
 private:
     Ui::MainWindow *ui;
     void encryptFile(const QString &inputFile, const QString &outputFile, const QString &password);
-    void decryptFile(const QString &inputFile, const QString &outputFile, const QString &password);
+    bool decryptFile(const QString &inputFile, const QString &outputFile, const QString &password);
     QByteArray computeFileHash(const QString &filePath);
     QByteArray m_originalHash;
 
