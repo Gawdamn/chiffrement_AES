@@ -16,6 +16,15 @@
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+    connect(ui->darkModeCheckBox, &QCheckBox::toggled, this, &MainWindow::on_darkModeCheckBox_toggled);
+
+    //Actions du Menu
+    // Connecter l'action Quitter : ferme l'application
+    connect(ui->actionQuitter, &QAction::triggered, this, &QMainWindow::close);
+    // Connecter l'action À propos
+    connect(ui->actionA_propos, &QAction::triggered, this, &MainWindow::on_actionA_propos_triggered);
+    // Connecter l'action Options
+    connect(ui->actionOptions, &QAction::triggered, this, &MainWindow::on_actionOptions_triggered);
 }
 
 MainWindow::~MainWindow()
@@ -24,12 +33,44 @@ MainWindow::~MainWindow()
 }
 
 
-
 void MainWindow::on_pushButton_clicked()
 {
     QApplication::quit();
 }
 
+
+void MainWindow::on_actionA_propos_triggered()
+{
+    QMessageBox::about(this, "À propos de l'application",
+                        "Application de chiffrement AES de fichier\nVersion 1.0\n\nDéveloppé dans le cadre de mon projet de fin d'études.\n© 2025 Nathan Lestrade");
+}
+
+
+void MainWindow::on_actionOptions_triggered()
+{
+    // Pour l'instant, affiche un message d'information
+    QMessageBox::information(this, "Options",
+                             "Les options de chiffrement (mode de chiffrement, taille des clés, etc.) seront implémentées ultérieurement.");
+}
+
+
+void MainWindow::on_darkModeCheckBox_toggled(bool checked)
+{
+    if(checked) {
+        // Appliquer une feuille de style pour le mode sombre
+        qApp->setStyleSheet(
+            "QWidget { background-color: #121212; color: #ffffff; }"
+            "QPushButton { background-color: #1e1e1e; border: 1px solid #3a3a3a; padding: 5px; }"
+            "QLineEdit { background-color: #1e1e1e; color: #ffffff; border: 1px solid #3a3a3a; }"
+            "QLabel { color: #ffffff; }"
+            "QCheckBox { color: #ffffff; }"
+            // Ajoutez d'autres règles pour vos widgets si nécessaire.
+            );
+    } else {
+        // Réinitialiser la feuille de style (mode clair)
+        qApp->setStyleSheet("");
+    }
+}
 
 
 void MainWindow::on_encryptButton_clicked()

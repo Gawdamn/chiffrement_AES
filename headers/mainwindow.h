@@ -20,6 +20,12 @@ public:
 private slots:
     void on_pushButton_clicked();
 
+    void on_actionA_propos_triggered();
+
+    void on_actionOptions_triggered();
+
+    void on_darkModeCheckBox_toggled(bool checked);
+
     void on_encryptButton_clicked();
 
     void on_decryptButton_clicked();
