@@ -1,8 +1,9 @@
 #include "headers/mainwindow.h"
 #include "ui_mainwindow.h"
+#include "headers/passworddialog.h"
+#include "headers/optionsdialog.h"
 #include <QFileDialog>
 #include <QMessageBox>
-#include "headers/passworddialog.h"
 #include <QDialog>
 #include <openssl/evp.h>
 #include <openssl/rand.h>
@@ -11,20 +12,25 @@
 #include <QFile>
 #include <QCryptographicHash>
 #include <QTemporaryFile>
+#include <QSettings>
 
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    connect(ui->darkModeCheckBox, &QCheckBox::toggled, this, &MainWindow::on_darkModeCheckBox_toggled);
 
-    //Actions du Menu
-    // Connecter l'action Quitter : ferme l'application
-    connect(ui->actionQuitter, &QAction::triggered, this, &QMainWindow::close);
-    // Connecter l'action À propos
-    connect(ui->actionA_propos, &QAction::triggered, this, &MainWindow::on_actionA_propos_triggered);
-    // Connecter l'action Options
-    connect(ui->actionOptions, &QAction::triggered, this, &MainWindow::on_actionOptions_triggered);
+    // Charger et appliquer le mode sombre si nécessaire
+    QSettings settings("PFE", "chiffrementAES");
+    bool darkModeEnabled = settings.value("darkMode", false).toBool();
+    if (darkModeEnabled) {
+        qApp->setStyleSheet(
+            "QWidget { background-color: #121212; color: #ffffff; }"
+            "QPushButton { background-color: #1e1e1e; border: 1px solid #3a3a3a; padding: 5px; }"
+            "QLineEdit { background-color: #1e1e1e; color: #ffffff; border: 1px solid #3a3a3a; }"
+            "QLabel { color: #ffffff; }"
+            "QCheckBox { color: #ffffff; }"
+            );
+    }
 }
 
 MainWindow::~MainWindow()
@@ -48,28 +54,21 @@ void MainWindow::on_actionA_propos_triggered()
 
 void MainWindow::on_actionOptions_triggered()
 {
-    // Pour l'instant, affiche un message d'information
-    QMessageBox::information(this, "Options",
-                             "Les options de chiffrement (mode de chiffrement, taille des clés, etc.) seront implémentées ultérieurement.");
-}
+    OptionsDialog optionsDialog(this);
 
+    // Connecter le signal
+    connect(&optionsDialog, &OptionsDialog::darkModeChanged, this, [this](bool enabled) {
+        if(enabled)
+            qApp->setStyleSheet("QWidget { background-color: #121212; color: #ffffff; }"
+                                "QPushButton { background-color: #1e1e1e; border: 1px solid #3a3a3a; padding: 5px; }"
+                                "QLineEdit { background-color: #1e1e1e; color: #ffffff; border: 1px solid #3a3a3a; }"
+                                "QLabel { color: #ffffff; }"
+                                "QCheckBox { color: #ffffff; }");
+        else
+            qApp->setStyleSheet("");
+    });
 
-void MainWindow::on_darkModeCheckBox_toggled(bool checked)
-{
-    if(checked) {
-        // Appliquer une feuille de style pour le mode sombre
-        qApp->setStyleSheet(
-            "QWidget { background-color: #121212; color: #ffffff; }"
-            "QPushButton { background-color: #1e1e1e; border: 1px solid #3a3a3a; padding: 5px; }"
-            "QLineEdit { background-color: #1e1e1e; color: #ffffff; border: 1px solid #3a3a3a; }"
-            "QLabel { color: #ffffff; }"
-            "QCheckBox { color: #ffffff; }"
-            // Ajoutez d'autres règles pour vos widgets si nécessaire.
-            );
-    } else {
-        // Réinitialiser la feuille de style (mode clair)
-        qApp->setStyleSheet("");
-    }
+    optionsDialog.exec(); // Affiche la pop-up modale
 }
 
 

@@ -24,8 +24,6 @@ private slots:
 
     void on_actionOptions_triggered();
 
-    void on_darkModeCheckBox_toggled(bool checked);
-
     void on_encryptButton_clicked();
 
     void on_decryptButton_clicked();
