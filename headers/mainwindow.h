@@ -34,7 +34,6 @@ private:
     bool decryptFile(const QString &inputFile, const QString &outputFile, const QString &password);
     QByteArray computeFileHash(const QString &filePath);
     QByteArray m_originalHash;
-
-
+    int m_aesKeySize; // 128, 192 ou 256 bits
 };
 #endif // MAINWINDOW_H

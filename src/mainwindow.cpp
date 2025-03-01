@@ -19,9 +19,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 {
     ui->setupUi(this);
 
-    // Charger et appliquer le mode sombre si nécessaire
+    // Charger et appliquer les options enregistrées
     QSettings settings("PFE", "chiffrementAES");
-    bool darkModeEnabled = settings.value("darkMode", false).toBool();
+    bool darkModeEnabled = settings.value("darkMode", false).toBool(); //mode clair par défaut
     if (darkModeEnabled) {
         qApp->setStyleSheet(
             "QWidget { background-color: #121212; color: #ffffff; }"
@@ -31,6 +31,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
             "QCheckBox { color: #ffffff; }"
             );
     }
+    m_aesKeySize = settings.value("aesKeySize", 256).toInt(); // clé 256 bits par défaut
 }
 
 MainWindow::~MainWindow()
@@ -56,7 +57,7 @@ void MainWindow::on_actionOptions_triggered()
 {
     OptionsDialog optionsDialog(this);
 
-    // Connecter le signal
+    // Connecter les signaux
     connect(&optionsDialog, &OptionsDialog::darkModeChanged, this, [this](bool enabled) {
         if(enabled)
             qApp->setStyleSheet("QWidget { background-color: #121212; color: #ffffff; }"
@@ -67,7 +68,9 @@ void MainWindow::on_actionOptions_triggered()
         else
             qApp->setStyleSheet("");
     });
-
+    connect(&optionsDialog, &OptionsDialog::aesKeySizeChanged, this, [this](int keySize) {
+        m_aesKeySize = keySize;
+    });
     optionsDialog.exec(); // Affiche la pop-up modale
 }
 
@@ -205,10 +208,25 @@ void MainWindow::on_decryptButton_clicked()
 // FONCTION DE CHIFFREMENT
 void MainWindow::encryptFile(const QString &inputFile, const QString &outputFile, const QString &password)
 {
-    const int AES_KEY_LENGTH = 32;  // Taille de la clé pour AES-256
+    const int AES_KEY_LENGTH = m_aesKeySize / 8;  // taille de la clé AES utilisée (division par 8 pour la conversion en octets)
     const int AES_BLOCK_SIZE = 16; // Taille d'un bloc AES
     const int GCM_IV_LENGTH = 12;  // Taille de l'IV pour GCM
     const int GCM_TAG_LENGTH = 16; // Taille du tag pour GCM
+
+
+
+
+
+    qDebug() << "Encryption: Using AES key size:" << m_aesKeySize << "bits (" << AES_KEY_LENGTH << " bytes)";
+
+
+
+
+
+
+
+
+
 
     // Générer un IV aléatoire pour GCM
     unsigned char iv[GCM_IV_LENGTH];
@@ -325,9 +343,23 @@ void MainWindow::encryptFile(const QString &inputFile, const QString &outputFile
 // FONCTION DE DÉCHIFFREMENT
 bool MainWindow::decryptFile(const QString &inputFile, const QString &outputFile, const QString &password)
 {
-    const int AES_KEY_LENGTH = 32;  // Taille de la clé pour AES-256
+    const int AES_KEY_LENGTH = m_aesKeySize / 8;  // taille de la clé AES utilisée
     const int GCM_IV_LENGTH = 12;  // Taille de l'IV pour GCM
     const int GCM_TAG_LENGTH = 16; // Taille du tag pour GCM
+
+
+
+
+
+
+    qDebug() << "Decryption: Using AES key size:" << m_aesKeySize << "bits (" << AES_KEY_LENGTH << " bytes)";
+
+
+
+
+
+
+
 
     // Ouvrir les fichiers d'entrée et de sortie
     QFile inFile(inputFile);

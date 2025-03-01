@@ -16,7 +16,8 @@ public:
     ~OptionsDialog();
 
 signals:
-    void darkModeChanged(bool enabled);  // Déclaration du signal
+    void darkModeChanged(bool enabled);
+    void aesKeySizeChanged(int keySize);
 
 private slots:
     void on_buttonBox_accepted();   //slot pour traiter la validation

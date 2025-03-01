@@ -8,10 +8,22 @@ OptionsDialog::OptionsDialog(QWidget *parent)
 {
     ui->setupUi(this);
 
-    // Charger la préférence du mode sombre à partir de QSettings
+    // Charger les options enregistrées à partir de QSettings
     QSettings settings("PFE", "chiffrementAES");
+
+    //dark-mode
     bool darkModeEnabled = settings.value("darkMode", false).toBool();  // false par défaut
     ui->darkModeCheckBox->setChecked(darkModeEnabled);
+
+    //Taille de la clé AES utilisée
+    int keySize = settings.value("aesKeySize", 256).toInt(); // 256 par défaut
+    switch(keySize) {   // Sélectionner l'index correspondant dans le combo box
+    case 128: ui->keySizeComboBox->setCurrentIndex(0); break;
+    case 192: ui->keySizeComboBox->setCurrentIndex(1); break;
+    case 256: ui->keySizeComboBox->setCurrentIndex(2); break;
+    default: ui->keySizeComboBox->setCurrentIndex(2); break;
+    }
+
 }
 
 OptionsDialog::~OptionsDialog()
@@ -21,14 +33,23 @@ OptionsDialog::~OptionsDialog()
 
 void OptionsDialog::on_buttonBox_accepted()
 {
-    // Récupérer l'état de la checkbox dark mode
-    bool darkModeEnabled = ui->darkModeCheckBox->isChecked();
-
-    // Enregistrer cette préférence dans QSettings
-    QSettings settings("PFE", "chiffrementAES");
+    bool darkModeEnabled = ui->darkModeCheckBox->isChecked();   // Récupérer l'état de la checkbox dark mode
+    QSettings settings("PFE", "chiffrementAES");    // Enregistrer cette préférence dans QSettings
     settings.setValue("darkMode", darkModeEnabled);
+    emit darkModeChanged(darkModeEnabled);  // Émettre le signal pour notifier MainWindow
 
-    // Émettre le signal pour notifier MainWindow (si vous utilisez le signal darkModeChanged)
-    emit darkModeChanged(darkModeEnabled);
+
+    int index = ui->keySizeComboBox->currentIndex();    // Récupérer la taille de la clé sélectionnée dans le QComboBox
+    int keySize = 256; // par défaut
+    if (index == 0)
+        keySize = 128;
+    else if (index == 1)
+        keySize = 192;
+    else if (index == 2)
+        keySize = 256;
+
+    settings.setValue("aesKeySize", keySize);   // Enregistrer la préférence de taille de clé
+    emit aesKeySizeChanged(keySize);
+
     accept();
 }
