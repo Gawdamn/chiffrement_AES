@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>400</width>
-    <height>300</height>
+    <height>250</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -16,9 +16,9 @@
   <widget class="QDialogButtonBox" name="buttonBox">
    <property name="geometry">
     <rect>
-     <x>30</x>
-     <y>240</y>
-     <width>341</width>
+     <x>210</x>
+     <y>200</y>
+     <width>171</width>
      <height>32</height>
     </rect>
    </property>
@@ -32,8 +32,8 @@
   <widget class="QCheckBox" name="darkModeCheckBox">
    <property name="geometry">
     <rect>
-     <x>30</x>
-     <y>100</y>
+     <x>20</x>
+     <y>160</y>
      <width>101</width>
      <height>31</height>
     </rect>
@@ -109,7 +109,7 @@
     </property>
    </item>
   </widget>
-  <widget class="QLabel" name="label">
+  <widget class="QLabel" name="Label">
    <property name="geometry">
     <rect>
      <x>30</x>
@@ -121,6 +121,7 @@
    <property name="font">
     <font>
      <pointsize>12</pointsize>
+     <italic>true</italic>
      <bold>true</bold>
     </font>
    </property>
@@ -147,6 +148,26 @@
    </property>
    <property name="text">
     <string>OPTIONS</string>
+   </property>
+  </widget>
+  <widget class="QCheckBox" name="deleteOriginalCheckBox">
+   <property name="geometry">
+    <rect>
+     <x>20</x>
+     <y>100</y>
+     <width>231</width>
+     <height>51</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <pointsize>11</pointsize>
+     <bold>true</bold>
+    </font>
+   </property>
+   <property name="text">
+    <string>supprimer le fichier original
+après le chiffrement</string>
    </property>
   </widget>
  </widget>

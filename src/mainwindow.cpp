@@ -109,6 +109,17 @@ void MainWindow::on_encryptButton_clicked()
         // Appeler la fonction pour chiffrer le fichier
         encryptFile(fileName, outputFile, password);
     }
+
+    // Charger la préférence de suppression du fichier original
+    QSettings settings("PFE", "chiffrementAES");
+    bool deleteOriginal = settings.value("deleteOriginal", false).toBool();
+    if (deleteOriginal) {
+        if (QFile::remove(fileName)) {
+            qDebug() << "Fichier original supprimé.";
+        } else {
+            qDebug() << "Échec de la suppression du fichier original.";
+        }
+    }
 }
 
 
