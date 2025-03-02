@@ -1,1 +1,6 @@
-<RCC/>
+<RCC>
+    <qresource prefix="/images">
+        <file>icon_chiffrement.png</file>
+        <file>icon_dechiffrement.png</file>
+    </qresource>
+</RCC>
