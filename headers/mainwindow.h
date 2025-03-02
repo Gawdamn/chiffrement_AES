@@ -35,5 +35,6 @@ private:
     QByteArray computeFileHash(const QString &filePath);
     QByteArray m_originalHash;
     int m_aesKeySize; // 128, 192 ou 256 bits
+    bool m_deleteOriginal; // false par défaut
 };
 #endif // MAINWINDOW_H

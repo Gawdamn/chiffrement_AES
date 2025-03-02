@@ -71,6 +71,9 @@ void MainWindow::on_actionOptions_triggered()
     connect(&optionsDialog, &OptionsDialog::aesKeySizeChanged, this, [this](int keySize) {
         m_aesKeySize = keySize;
     });
+    connect(&optionsDialog, &OptionsDialog::originalDeletionPreferenceChanged, this, [this](bool enabled) {
+        m_deleteOriginal = enabled;
+    });
     optionsDialog.exec(); // Affiche la pop-up modale
 }
 
@@ -114,9 +117,7 @@ void MainWindow::on_encryptButton_clicked()
     QSettings settings("PFE", "chiffrementAES");
     bool deleteOriginal = settings.value("deleteOriginal", false).toBool();
     if (deleteOriginal) {
-        if (QFile::remove(fileName)) {
-            qDebug() << "Fichier original supprimé.";
-        } else {
+        if (!QFile::remove(fileName)) {
             qDebug() << "Échec de la suppression du fichier original.";
         }
     }

@@ -22,12 +22,11 @@ OptionsDialog::OptionsDialog(QWidget *parent)
     case 192: ui->keySizeComboBox->setCurrentIndex(1); break;
     case 256: ui->keySizeComboBox->setCurrentIndex(2); break;
     default: ui->keySizeComboBox->setCurrentIndex(2); break;
+    }
 
     // Suppression du fichier original
     bool deleteOriginal = settings.value("deleteOriginal", false).toBool(); // false par défaut
     ui->deleteOriginalCheckBox->setChecked(deleteOriginal);
-    }
-
 }
 
 OptionsDialog::~OptionsDialog()
@@ -51,13 +50,13 @@ void OptionsDialog::on_buttonBox_accepted()
         keySize = 192;
     else if (index == 2)
         keySize = 256;
-
     settings.setValue("aesKeySize", keySize);
     emit aesKeySizeChanged(keySize);
 
 
     bool deleteOriginal = ui->deleteOriginalCheckBox->isChecked();  // Récupérer l'état de la checkbox pour supprimer le fichier original
     settings.setValue("deleteOriginal", deleteOriginal);
+    settings.sync();
     emit originalDeletionPreferenceChanged(deleteOriginal);
 
     accept();

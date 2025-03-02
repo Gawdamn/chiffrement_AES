@@ -18,7 +18,7 @@ public:
 signals:
     void darkModeChanged(bool enabled);
     void aesKeySizeChanged(int keySize);
-    void originalDeletionPreferenceChanged(bool enabled);
+    void originalDeletionPreferenceChanged(bool enalbed);
 
 private slots:
     void on_buttonBox_accepted();   //slot pour traiter la validation
