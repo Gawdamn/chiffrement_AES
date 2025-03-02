@@ -213,21 +213,6 @@ void MainWindow::encryptFile(const QString &inputFile, const QString &outputFile
     const int GCM_IV_LENGTH = 12;  // Taille de l'IV pour GCM
     const int GCM_TAG_LENGTH = 16; // Taille du tag pour GCM
 
-
-
-
-
-    qDebug() << "Encryption: Using AES key size:" << m_aesKeySize << "bits (" << AES_KEY_LENGTH << " bytes)";
-
-
-
-
-
-
-
-
-
-
     // Générer un IV aléatoire pour GCM
     unsigned char iv[GCM_IV_LENGTH];
     if (!RAND_bytes(iv, sizeof(iv))) {
@@ -285,7 +270,17 @@ void MainWindow::encryptFile(const QString &inputFile, const QString &outputFile
         return;
     }
 
-    if (!EVP_EncryptInit_ex(ctx, EVP_aes_256_gcm(), nullptr, nullptr, nullptr)) {
+    const EVP_CIPHER *cipher = nullptr;
+    //choix dynamique du cipher en fonction de la clé AES utilisée
+    if(m_aesKeySize == 128) {
+        cipher = EVP_aes_128_gcm();
+    } else if(m_aesKeySize == 192) {
+        cipher = EVP_aes_192_gcm();
+    } else { // m_aesKeySize == 256
+        cipher = EVP_aes_256_gcm();
+    }
+
+    if (!EVP_EncryptInit_ex(ctx, cipher, nullptr, nullptr, nullptr)) {
         QMessageBox::critical(this, "Erreur", "Erreur lors de l'initialisation du chiffrement.");
         EVP_CIPHER_CTX_free(ctx);
         return;
@@ -347,20 +342,6 @@ bool MainWindow::decryptFile(const QString &inputFile, const QString &outputFile
     const int GCM_IV_LENGTH = 12;  // Taille de l'IV pour GCM
     const int GCM_TAG_LENGTH = 16; // Taille du tag pour GCM
 
-
-
-
-
-
-    qDebug() << "Decryption: Using AES key size:" << m_aesKeySize << "bits (" << AES_KEY_LENGTH << " bytes)";
-
-
-
-
-
-
-
-
     // Ouvrir les fichiers d'entrée et de sortie
     QFile inFile(inputFile);
     QFile outFile(outputFile);
@@ -414,7 +395,18 @@ bool MainWindow::decryptFile(const QString &inputFile, const QString &outputFile
         QMessageBox::critical(this, "Erreur", "Erreur lors de l'initialisation du contexte de déchiffrement.");
         return false;
     }
-    if (!EVP_DecryptInit_ex(ctx, EVP_aes_256_gcm(), nullptr, key, iv)) {
+
+    const EVP_CIPHER *cipher = nullptr;
+    //choix dynamique du cipher en fonction de la clé AES utilisée
+    if(m_aesKeySize == 128) {
+        cipher = EVP_aes_128_gcm();
+    } else if(m_aesKeySize == 192) {
+        cipher = EVP_aes_192_gcm();
+    } else { // m_aesKeySize == 256
+        cipher = EVP_aes_256_gcm();
+    }
+
+    if (!EVP_DecryptInit_ex(ctx, cipher, nullptr, key, iv)) {
         QMessageBox::critical(this, "Erreur", "Erreur lors de la configuration de la clé et de l'IV.");
         EVP_CIPHER_CTX_free(ctx);
         return false;
