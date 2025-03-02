@@ -2,5 +2,9 @@
     <qresource prefix="/images">
         <file>icon_chiffrement.png</file>
         <file>icon_dechiffrement.png</file>
+        <file>icon_quit.png</file>
+        <file>icon_menu.png</file>
+        <file>icon_options.png</file>
+        <file>icon_infos.png</file>
     </qresource>
 </RCC>

@@ -152,6 +152,9 @@
      <pointsize>11</pointsize>
     </font>
    </property>
+   <property name="defaultUp">
+    <bool>false</bool>
+   </property>
    <widget class="QMenu" name="menuMenu">
     <property name="font">
      <font>
@@ -161,6 +164,13 @@
     <property name="title">
      <string>Menu</string>
     </property>
+    <property name="icon">
+     <iconset resource="../resources/resources.qrc">
+      <normaloff>:/images/icon_menu.png</normaloff>:/images/icon_menu.png</iconset>
+    </property>
+    <property name="separatorsCollapsible">
+     <bool>false</bool>
+    </property>
     <addaction name="actionOptions"/>
     <addaction name="actionA_propos"/>
     <addaction name="actionQuitter"/>
@@ -169,6 +179,10 @@
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionOptions">
+   <property name="icon">
+    <iconset resource="../resources/resources.qrc">
+     <normaloff>:/images/icon_options.png</normaloff>:/images/icon_options.png</iconset>
+   </property>
    <property name="text">
     <string>Options</string>
    </property>
@@ -177,11 +191,19 @@
    </property>
   </action>
   <action name="actionA_propos">
+   <property name="icon">
+    <iconset resource="../resources/resources.qrc">
+     <normaloff>:/images/icon_infos.png</normaloff>:/images/icon_infos.png</iconset>
+   </property>
    <property name="text">
     <string>À propos</string>
    </property>
   </action>
   <action name="actionQuitter">
+   <property name="icon">
+    <iconset resource="../resources/resources.qrc">
+     <normaloff>:/images/icon_quit.png</normaloff>:/images/icon_quit.png</iconset>
+   </property>
    <property name="text">
     <string>Quitter l'application</string>
    </property>
