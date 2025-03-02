@@ -162,13 +162,8 @@ void MainWindow::on_decryptButton_clicked()
         reply = QMessageBox::question(this, "Conserver le fichier chiffré ?",
                                       "Voulez-vous conserver le fichier chiffré une fois le déchiffrement terminé ?",
                                       QMessageBox::Yes | QMessageBox::No);
-        if (reply == QMessageBox::No) {
-            if (QFile::remove(inputFile)) {
-                qDebug() << "Fichier chiffré supprimé.";
-            } else {
-                qDebug() << "Échec de la suppression du fichier chiffré.";
-            }
-        }
+        if (reply == QMessageBox::No)
+            QFile::remove(inputFile);
 
         // À ce stade, le fichier temporaire contient le résultat déchiffré.
         // Demander à l'utilisateur de choisir le nom et l'emplacement du fichier déchiffré.
@@ -177,6 +172,14 @@ void MainWindow::on_decryptButton_clicked()
             // Si l'utilisateur annule, on peut supprimer le fichier temporaire
             QFile::remove(tempFilePath);
             return;
+        }
+
+        // Vérifier si le fichier de destination existe déjà et le supprimer si c'est le cas
+        if (QFile::exists(outputFile)) {
+            if (!QFile::remove(outputFile)) {
+                QMessageBox::warning(this, "Erreur", "Impossible de supprimer l'ancien fichier de destination.");
+                // Vous pouvez décider ici de ne pas continuer ou d'essayer de copier malgré tout.
+            }
         }
 
         // Copier (ou renommer) le fichier temporaire vers le fichier de destination
@@ -190,15 +193,6 @@ void MainWindow::on_decryptButton_clicked()
             } else {
                 QMessageBox::warning(this, "Erreur", "Erreur lors de l'enregistrement du fichier déchiffré.");
             }
-        }
-
-
-        // Après déchiffrement, calculer le hash du fichier déchiffré
-        QByteArray decryptedHash = computeFileHash(outputFile);
-
-        // Comparer le hash original et le hash du fichier déchiffré
-        if (decryptedHash != m_originalHash) {
-            QMessageBox::warning(this, "Erreur d'intégrité", "Le fichier déchiffré diffère de l'original.");
         }
     }
 }
@@ -253,15 +247,18 @@ void MainWindow::encryptFile(const QString &inputFile, const QString &outputFile
         QMessageBox::critical(this, "Erreur", "Impossible d'ouvrir le fichier d'entrée.");
         return;
     }
+    QByteArray originalHash = computeFileHash(inputFile);   // Calcul du hash du fichier original
 
     if (!outFile.open(QIODevice::WriteOnly | QIODevice::Unbuffered)) {
         QMessageBox::critical(this, "Erreur", "Impossible d'ouvrir le fichier de sortie.");
         return;
     }
 
-    // Écrire le sel et l'IV dans le fichier de sortie
+    // Écrire le sel, l'IV et le hash original (32 octets)
     outFile.write(reinterpret_cast<const char *>(salt), sizeof(salt));
     outFile.write(reinterpret_cast<const char *>(iv), sizeof(iv));
+    outFile.write(originalHash);
+
 
     // Initialiser le contexte de chiffrement
     EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
@@ -356,14 +353,12 @@ bool MainWindow::decryptFile(const QString &inputFile, const QString &outputFile
         return false;
     }
 
-
     // Lire le sel
     unsigned char salt[16];
     if (inFile.read(reinterpret_cast<char *>(salt), sizeof(salt)) != sizeof(salt)) {
         QMessageBox::critical(this, "Erreur", "Erreur lors de la lecture du sel.");
         return false;
     }
-
 
     // Lire l'IV
     unsigned char iv[GCM_IV_LENGTH];
@@ -372,6 +367,12 @@ bool MainWindow::decryptFile(const QString &inputFile, const QString &outputFile
         return false;
     }
 
+    // Lire le hash
+    QByteArray storedHash = inFile.read(32);
+    if (storedHash.size() != 32) {
+        QMessageBox::critical(this, "Erreur", "Erreur lors de la lecture du hash original.");
+        return false;
+    }
 
     // Dériver la clé à partir du mot de passe
     unsigned char key[AES_KEY_LENGTH];
@@ -428,19 +429,17 @@ bool MainWindow::decryptFile(const QString &inputFile, const QString &outputFile
 
     // Calculer la longueur du ciphertext.
     // Le fichier chiffré est structuré comme suit :
-    // [salt (16 octets)] [IV (12 octets)] [ciphertext] [tag (16 octets)]
-    qint64 totalFileSize = inFile.size();
-    const int metadataSize = sizeof(salt) + sizeof(iv) + GCM_TAG_LENGTH;
-    qint64 ciphertextLength = totalFileSize - metadataSize;
+    // [salt (16 octets)] [IV (12 octets)] [hash (32 octets)] [ciphertext] [tag (16 octets)]
+    const int metadataSize = sizeof(salt) + sizeof(iv) + storedHash.size() + GCM_TAG_LENGTH;
+    qint64 ciphertextLength = inFile.size() - metadataSize;
     qint64 totalRead = 0;
-
 
     unsigned char inBuffer[4096];
     unsigned char outBuffer[4096];
     int bytesRead, outLen;
 
     // Revenir au début du ciphertext (après sel et IV)
-    inFile.seek(sizeof(salt) + sizeof(iv));
+    inFile.seek(sizeof(salt) + sizeof(iv) + storedHash.size());
 
     while (totalRead < ciphertextLength) {
         int bytesToRead = qMin(qint64(sizeof(inBuffer)), ciphertextLength - totalRead);
@@ -464,6 +463,12 @@ bool MainWindow::decryptFile(const QString &inputFile, const QString &outputFile
         QMessageBox::critical(this, "Erreur", "Le mot de passe est incorrect ou les données sont corrompues.");
         EVP_CIPHER_CTX_free(ctx);
         return false;
+    }
+
+    // Calculer le hash du fichier déchiffré
+    QByteArray decryptedHash = computeFileHash(outputFile);
+    if (decryptedHash != storedHash) {  // On compare ensuite ce hash avec le hash original
+        QMessageBox::warning(this, "Erreur d'intégrité", "Le fichier déchiffré diffère de l'original.");
     }
 
     // Nettoyer
