@@ -13,11 +13,57 @@
 #include <QCryptographicHash>
 #include <QTemporaryFile>
 #include <QSettings>
+#include <QJsonDocument>
+#include <QJsonArray>
+#include <QJsonObject>
+#include <QDateTime>
+#include <QTableWidgetItem>
+#include <QTableWidget>
+
 
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+
+    // Récupérer l'ancien widget central
+    QWidget *oldCentral = this->centralWidget();
+
+    // Créer le QTabWidget
+    QTabWidget *tabWidget = new QTabWidget(this);
+
+    // Ajouter l'ancien widget central comme premier onglet
+    tabWidget->addTab(oldCentral, "Interface principale");
+
+    // Créer le widget pour l'onglet Historique
+    QWidget *historyWidget = new QWidget(this);
+    QVBoxLayout *historyLayout = new QVBoxLayout(historyWidget);
+
+    // Créer et configurer le QTableWidget pour l'historique
+    m_historyTableWidget = new QTableWidget(historyWidget);
+    m_historyTableWidget->setColumnCount(4);
+    QStringList headers;
+    headers << "Date" << "Opération" << "Fichier source" << "Fichier résultat";
+    m_historyTableWidget->setHorizontalHeaderLabels(headers);
+
+    // Ajouter le QTableWidget au layout
+    historyLayout->addWidget(m_historyTableWidget);
+
+    // Créer le bouton Clear History
+    QPushButton *clearHistoryButton = new QPushButton("Clear History", historyWidget);
+    historyLayout->addWidget(clearHistoryButton);
+
+    // Connecter le signal du bouton à un slot clearHistory() dans MainWindow
+    connect(clearHistoryButton, &QPushButton::clicked, this, &MainWindow::clearHistory);
+
+    // Définir le layout et ajouter l'onglet Historique au QTabWidget
+    historyWidget->setLayout(historyLayout);
+    tabWidget->addTab(historyWidget, "Historique");
+
+    // Définir le QTabWidget comme nouveau widget central
+    this->setCentralWidget(tabWidget);
+
+    loadHistory();
 
     // Charger et appliquer les options enregistrées
     QSettings settings("PFE", "chiffrementAES");
@@ -111,8 +157,10 @@ void MainWindow::on_encryptButton_clicked()
 
         // Appeler la fonction pour chiffrer le fichier
         encryptFile(fileName, outputFile, password);
-    }
 
+        addHistoryEntry("Chiffrement", fileName, outputFile);
+        loadHistory();
+    }
     // Charger la préférence de suppression du fichier original
     QSettings settings("PFE", "chiffrementAES");
     bool deleteOriginal = settings.value("deleteOriginal", false).toBool();
@@ -206,6 +254,9 @@ void MainWindow::on_decryptButton_clicked()
                 QMessageBox::warning(this, "Erreur", "Erreur lors de l'enregistrement du fichier déchiffré.");
             }
         }
+
+        addHistoryEntry("Déchiffrement", inputFile, outputFile);
+        loadHistory();
     }
 }
 
@@ -493,7 +544,7 @@ bool MainWindow::decryptFile(const QString &inputFile, const QString &outputFile
 
 
 
-//FONCTION DE CALCUL DU HASH D'UN FICHIER
+// FONCTION DE CALCUL DU HASH D'UN FICHIER
 QByteArray MainWindow::computeFileHash(const QString &filePath)
 {
     QFile file(filePath);
@@ -510,4 +561,93 @@ QByteArray MainWindow::computeFileHash(const QString &filePath)
     file.close();
 
     return hash.result();
+}
+
+
+
+// FONCTIONS POUR L'HISTORIQUE
+void MainWindow::addHistoryEntry(const QString &operation, const QString &inputFile, const QString &outputFile)
+{
+    QSettings settings("PFE", "chiffrementAES");
+    bool historyEnabled = settings.value("historyEnabled", true).toBool();
+
+    // Si l'historique n'est pas activé, ne rien faire
+    if (!historyEnabled) {
+        qDebug() << "Historique désactivé, aucune entrée enregistrée.";
+        return;
+    }
+
+    // Récupérer l'historique existant sous forme de JSON (en chaîne)
+    QString historyJson = settings.value("operationHistory", "[]").toString();
+    QJsonDocument doc = QJsonDocument::fromJson(historyJson.toUtf8());
+    QJsonArray historyArray = doc.array();
+
+    // Créer une nouvelle entrée
+    QJsonObject entry;
+    entry["date"] = QDateTime::currentDateTime().toString(Qt::ISODate);
+    entry["operation"] = operation; // "Chiffrement" ou "Déchiffrement"
+    entry["inputFile"] = inputFile;
+    entry["outputFile"] = outputFile;
+
+    // Ajoute l'entrée à l'historique
+    historyArray.append(entry);
+
+    // Sauvegarder l'historique mis à jour
+    QJsonDocument newDoc(historyArray);
+    settings.setValue("operationHistory", newDoc.toJson(QJsonDocument::Compact));
+    settings.sync();
+}
+
+
+void MainWindow::loadHistory()
+{
+    // Charger l'historique depuis QSettings
+    QSettings settings("PFE", "chiffrementAES");
+    QString historyJson = settings.value("operationHistory", "[]").toString();
+    QJsonDocument doc = QJsonDocument::fromJson(historyJson.toUtf8());
+    QJsonArray historyArray = doc.array();
+
+    // Préparer le QTableWidget
+    m_historyTableWidget->clearContents();
+    m_historyTableWidget->setRowCount(historyArray.size());
+
+    // Remplir le tableau avec les entrées d'historique
+    for (int i = 0; i < historyArray.size(); ++i) {
+        QJsonObject entry = historyArray.at(i).toObject();
+        QTableWidgetItem *dateItem = new QTableWidgetItem(entry["date"].toString());
+        QTableWidgetItem *opItem = new QTableWidgetItem(entry["operation"].toString());
+        QTableWidgetItem *inputItem = new QTableWidgetItem(entry["inputFile"].toString());
+        QTableWidgetItem *outputItem = new QTableWidgetItem(entry["outputFile"].toString());
+
+        m_historyTableWidget->setItem(i, 0, dateItem);
+        m_historyTableWidget->setItem(i, 1, opItem);
+        m_historyTableWidget->setItem(i, 2, inputItem);
+        m_historyTableWidget->setItem(i, 3, outputItem);
+    }
+    qDebug() << "Historique chargé : " << historyArray.size() << " entrées.";
+}
+
+
+void MainWindow::clearHistory()
+{
+    // Demander une confirmation (optionnel)
+    if (QMessageBox::question(this, "Effacer l'historique",
+                              "Voulez-vous vraiment effacer l'historique des opérations ?",
+                              QMessageBox::Yes | QMessageBox::No) == QMessageBox::No)
+    {
+        return;
+    }
+
+    // Effacer l'historique dans QSettings
+    QSettings settings("PFE", "chiffrementAES");
+    settings.setValue("operationHistory", "[]");
+    settings.sync();
+
+    // Effacer l'affichage dans le QTableWidget
+    if (m_historyTableWidget) {
+        m_historyTableWidget->clearContents();
+        m_historyTableWidget->setRowCount(0);
+    }
+
+    QMessageBox::information(this, "Historique", "L'historique a été effacé.");
 }

@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QTableWidget>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -33,8 +34,12 @@ private:
     void encryptFile(const QString &inputFile, const QString &outputFile, const QString &password);
     bool decryptFile(const QString &inputFile, const QString &outputFile, const QString &password);
     QByteArray computeFileHash(const QString &filePath);
+    void addHistoryEntry(const QString &operation, const QString &inputFile, const QString &outputFile);
+    void loadHistory();
+    void clearHistory();
     QByteArray m_originalHash;
     int m_aesKeySize; // 128, 192 ou 256 bits
     bool m_deleteOriginal; // false par défaut
+    QTableWidget *m_historyTableWidget;
 };
 #endif // MAINWINDOW_H
