@@ -19,7 +19,9 @@
 #include <QDateTime>
 #include <QTableWidgetItem>
 #include <QTableWidget>
-
+#include <QProgressBar>
+#include <QtConcurrent>
+#include <QFutureWatcher>
 
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow)
@@ -41,9 +43,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     // Créer et configurer le QTableWidget pour l'historique
     m_historyTableWidget = new QTableWidget(historyWidget);
-    m_historyTableWidget->setColumnCount(4);
+    m_historyTableWidget->setColumnCount(5);
     QStringList headers;
-    headers << "Date" << "Opération" << "Fichier source" << "Fichier résultat";
+    headers << "Date" << "Opération" << "Fichier source" << "Fichier résultat" << "Statut";
     m_historyTableWidget->setHorizontalHeaderLabels(headers);
 
     // Ajouter le QTableWidget au layout
@@ -64,6 +66,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     this->setCentralWidget(tabWidget);
 
     loadHistory();
+
+    statusBar()->showMessage("Prêt");
 
     // Charger et appliquer les options enregistrées
     QSettings settings("PFE", "chiffrementAES");
@@ -86,10 +90,12 @@ MainWindow::~MainWindow()
 }
 
 
+
 void MainWindow::on_pushButton_clicked()
 {
     QApplication::quit();
 }
+
 
 
 void MainWindow::on_actionA_propos_triggered()
@@ -97,6 +103,7 @@ void MainWindow::on_actionA_propos_triggered()
     QMessageBox::about(this, "À propos de l'application",
                         "Application de chiffrement AES de fichier\nVersion 1.0\n\nDéveloppé dans le cadre de mon projet de fin d'études.\n© 2025 Nathan Lestrade");
 }
+
 
 
 void MainWindow::on_actionOptions_triggered()
@@ -124,48 +131,53 @@ void MainWindow::on_actionOptions_triggered()
 }
 
 
+
 void MainWindow::on_encryptButton_clicked()
 {
-    // Ouvrir une boîte de dialogue pour sélectionner un fichier
-    QString fileName = QFileDialog::getOpenFileName(this, "Sélectionner un fichier à chiffrer");
-
-    // Vérifier si un fichier a été sélectionné
-    if (fileName.isEmpty())
+    // Sélectionner le fichier à chiffrer (inputFile) et obtenir le mot de passe via la pop-up
+    QString inputFile = QFileDialog::getOpenFileName(this, "Sélectionner un fichier à chiffrer");
+    if (inputFile.isEmpty())
         return;
 
     // Calculer et stocker le hash du fichier original
-    m_originalHash = computeFileHash(fileName);
+    m_originalHash = computeFileHash(inputFile);
 
-    //affichage du fichier sélectionné sur l'interface principale
-    ui->fileLabel->setText("Fichier sélectionné : " + fileName);
+    // Affichage du fichier sélectionné sur l'interface principale
+    statusBar()->showMessage("Fichier sélectionné : " + inputFile);
 
     // Ouvrir la fenêtre pour saisir le mot de passe
     PasswordDialog passwordDialog(this);
-    if (passwordDialog.exec() == QDialog::Accepted) {
-        QString password = passwordDialog.getPassword();
-
-        // Vérifier que le mot de passe n'est pas vide
-        if (password.isEmpty()) {
-            QMessageBox::warning(this, "Erreur", "Veuillez saisir un mot de passe.");
-            return;
-        }
-
-        // Ouvrir la fenêtre pour choisir le nom et l'emplacement du nouveau fichier chiffré
-        QString outputFile = QFileDialog::getSaveFileName(this, "Enregistrer le fichier chiffré");
-        if (outputFile.isEmpty())
-            return;
-
-        // Appeler la fonction pour chiffrer le fichier
-        encryptFile(fileName, outputFile, password);
-
-        addHistoryEntry("Chiffrement", fileName, outputFile);
-        loadHistory();
+    if (passwordDialog.exec() != QDialog::Accepted)
+        return;
+    QString password = passwordDialog.getPassword();
+    if (password.isEmpty()) {
+        QMessageBox::warning(this, "Erreur", "Veuillez saisir un mot de passe.");
+        return;
     }
+
+    // Ouvrir la fenêtre pour choisir le nom et l'emplacement du nouveau fichier chiffré
+    QString outputFile = QFileDialog::getSaveFileName(this, "Enregistrer le fichier chiffré");
+    if (outputFile.isEmpty())
+        return;
+
+    // À ce stade, la boîte de dialogue de sauvegarde est fermée, l'interface est active.
+
+    // Utiliser QtConcurrent pour lancer l'opération de chiffrement de manière asynchrone
+    QFutureWatcher<bool> *watcher = new QFutureWatcher<bool>(this);
+    connect(watcher, &QFutureWatcher<bool>::finished, this, [this, watcher, inputFile, outputFile]() {
+        bool success = watcher->result(); // Récupère le résultat du chiffrement
+        addHistoryEntry("Chiffrement", inputFile, outputFile, success);
+        watcher->deleteLater();
+    });
+
+    QFuture<bool> future = QtConcurrent::run(this, &MainWindow::encryptFile, inputFile, outputFile, password);
+    watcher->setFuture(future);
+
     // Charger la préférence de suppression du fichier original
     QSettings settings("PFE", "chiffrementAES");
     bool deleteOriginal = settings.value("deleteOriginal", false).toBool();
     if (deleteOriginal) {
-        if (!QFile::remove(fileName)) {
+        if (!QFile::remove(inputFile)) {
             qDebug() << "Échec de la suppression du fichier original.";
         }
     }
@@ -182,54 +194,60 @@ void MainWindow::on_decryptButton_clicked()
     if (inputFile.isEmpty())
         return;
 
-    //affichage du fichier sélectionné sur l'interface principale
-    ui->fileLabel->setText("Fichier sélectionné : " + inputFile);
+    // Affichage du fichier sélectionné sur l'interface principale
+    statusBar()->showMessage("Fichier sélectionné : " + inputFile);
 
     // Ouvrir la fenêtre pour saisir le mot de passe
     PasswordDialog passwordDialog(this);
-    if (passwordDialog.exec() == QDialog::Accepted) {
-        QString password = passwordDialog.getPassword();
+    if (passwordDialog.exec() != QDialog::Accepted)
+        return;
+    QString password = passwordDialog.getPassword();
+    if (password.isEmpty()) {
+        QMessageBox::warning(this, "Erreur", "Veuillez saisir un mot de passe.");
+        return;
+    }
 
-        // Vérifier que le mot de passe n'est pas vide
-        if (password.isEmpty()) {
-            QMessageBox::warning(this, "Erreur", "Veuillez saisir un mot de passe.");
-            return;
-        }
+    // Créer un fichier temporaire pour contenir le déchiffrement
+    QTemporaryFile tempFile;
+    // On choisit un suffixe pour le fichier temporaire
+    tempFile.setFileTemplate(QDir::tempPath() + "/tempDecryptedXXXXXX");
+    if (!tempFile.open()) {
+        QMessageBox::critical(this, "Erreur", "Impossible de créer le fichier temporaire.");
+        return;
+    }
+    QString tempFilePath = tempFile.fileName();
+    tempFile.close(); // On va le réutiliser via son nom avec decryptFile
 
+    // Lancer le déchiffrement en tâche de fond (thread séparé)
+    QFutureWatcher<bool> *watcher = new QFutureWatcher<bool>(this);
 
-        // Créer un fichier temporaire pour contenir le déchiffrement
-        QTemporaryFile tempFile;
-        // On choisit un suffixe pour le fichier temporaire (optionnel)
-        tempFile.setFileTemplate(QDir::tempPath() + "/tempDecryptedXXXXXX");
-        if (!tempFile.open()) {
-            QMessageBox::critical(this, "Erreur", "Impossible de créer le fichier temporaire.");
-            return;
-        }
-        QString tempFilePath = tempFile.fileName();
-        tempFile.close(); // On va le réutiliser via son nom avec decryptFile
+    connect(watcher, &QFutureWatcher<bool>::finished, this, [this, watcher, inputFile, tempFilePath]() {
+        bool success = watcher->result();   // Récupérer le résultat du déchiffrement
+        watcher->deleteLater();
 
-
-        // Tenter de déchiffrer dans le fichier temporaire
-        if (!decryptFile(inputFile, tempFilePath, password)) {
-            // En cas d'erreur, ne pas continuer
+        if (!success) {
+            // En cas d'échec, on supprime le fichier temporaire et on affiche un message
             QFile::remove(tempFilePath);
+            statusBar()->showMessage("Déchiffrement échoué ou corrompu.");
+            addHistoryEntry("Déchiffrement", inputFile, tempFilePath, success);
             return;
         }
-
 
         // Si la décryption a réussi, on demande si l'utilisateur souhaite conserver le fichier chiffré
         QMessageBox::StandardButton reply;
-        reply = QMessageBox::question(this, "Conserver le fichier chiffré ?",
-                                      "Voulez-vous conserver le fichier chiffré une fois le déchiffrement terminé ?",
-                                      QMessageBox::Yes | QMessageBox::No);
-        if (reply == QMessageBox::No)
+        reply = QMessageBox::question(
+            this, "Conserver le fichier chiffré ?",
+            "Voulez-vous conserver le fichier chiffré une fois le déchiffrement terminé ?",
+            QMessageBox::Yes | QMessageBox::No
+            );
+        if (reply == QMessageBox::No) {
             QFile::remove(inputFile);
+        }
 
         // À ce stade, le fichier temporaire contient le résultat déchiffré.
         // Demander à l'utilisateur de choisir le nom et l'emplacement du fichier déchiffré.
         QString outputFile = QFileDialog::getSaveFileName(this, "Enregistrer le fichier déchiffré");
         if (outputFile.isEmpty()) {
-            // Si l'utilisateur annule, on peut supprimer le fichier temporaire
             QFile::remove(tempFilePath);
             return;
         }
@@ -238,15 +256,14 @@ void MainWindow::on_decryptButton_clicked()
         if (QFile::exists(outputFile)) {
             if (!QFile::remove(outputFile)) {
                 QMessageBox::warning(this, "Erreur", "Impossible de supprimer l'ancien fichier de destination.");
-                // Vous pouvez décider ici de ne pas continuer ou d'essayer de copier malgré tout.
+                return;
             }
         }
 
-        // Copier (ou renommer) le fichier temporaire vers le fichier de destination
+        // Renommer ou copier le fichier temporaire
         if (QFile::rename(tempFilePath, outputFile)) {
             QMessageBox::information(this, "Succès", "Fichier déchiffré avec succès !");
         } else {
-            // Si renommer échoue, on peut essayer une copie
             if (QFile::copy(tempFilePath, outputFile)) {
                 QFile::remove(tempFilePath);
                 QMessageBox::information(this, "Succès", "Fichier déchiffré avec succès !");
@@ -255,16 +272,21 @@ void MainWindow::on_decryptButton_clicked()
             }
         }
 
-        addHistoryEntry("Déchiffrement", inputFile, outputFile);
-        loadHistory();
-    }
+        addHistoryEntry("Déchiffrement", inputFile, outputFile, success);
+    });
+
+    // Lancer la tâche asynchrone
+    QFuture<bool> future = QtConcurrent::run(this, &MainWindow::decryptFile, inputFile, tempFilePath, password);
+    watcher->setFuture(future);
 }
 
 
 
 // FONCTION DE CHIFFREMENT
-void MainWindow::encryptFile(const QString &inputFile, const QString &outputFile, const QString &password)
+bool MainWindow::encryptFile(const QString &inputFile, const QString &outputFile, const QString &password)
 {
+    statusBar()->showMessage("Chiffrement en cours...");
+
     const int AES_KEY_LENGTH = m_aesKeySize / 8;  // taille de la clé AES utilisée (division par 8 pour la conversion en octets)
     const int AES_BLOCK_SIZE = 16; // Taille d'un bloc AES
     const int GCM_IV_LENGTH = 12;  // Taille de l'IV pour GCM
@@ -273,8 +295,8 @@ void MainWindow::encryptFile(const QString &inputFile, const QString &outputFile
     // Générer un IV aléatoire pour GCM
     unsigned char iv[GCM_IV_LENGTH];
     if (!RAND_bytes(iv, sizeof(iv))) {
-        QMessageBox::critical(this, "Erreur", "Erreur lors de la génération de l'IV.");
-        return;
+        qDebug() << "Erreur lors de la génération de l'IV";
+        return false;
     }
 
 
@@ -282,8 +304,8 @@ void MainWindow::encryptFile(const QString &inputFile, const QString &outputFile
     unsigned char key[AES_KEY_LENGTH];
     unsigned char salt[16];
     if (!RAND_bytes(salt, sizeof(salt))) {
-        QMessageBox::critical(this, "Erreur", "Erreur lors de la génération du sel.");
-        return;
+        qDebug() << "Erreur lors de la génération du sel";
+        return false;
     }
 
 
@@ -297,8 +319,8 @@ void MainWindow::encryptFile(const QString &inputFile, const QString &outputFile
             AES_KEY_LENGTH,                            // Taille de la clé AES (32 pour AES-256)
             key                                       // Clé générée
             )) {
-        QMessageBox::critical(this, "Erreur", "Erreur lors de la dérivation de la clé.");
-        return;
+        qDebug() << "Erreur lors de la dérivation de la clé";
+        return false;
     }
 
 
@@ -307,14 +329,14 @@ void MainWindow::encryptFile(const QString &inputFile, const QString &outputFile
     QFile outFile(outputFile);
 
     if (!inFile.open(QIODevice::ReadOnly | QIODevice::Unbuffered)) {
-        QMessageBox::critical(this, "Erreur", "Impossible d'ouvrir le fichier d'entrée.");
-        return;
+        qDebug() << "Impossible d'ouvrir le fichier d'entrée";
+        return false;
     }
     QByteArray originalHash = computeFileHash(inputFile);   // Calcul du hash du fichier original
 
     if (!outFile.open(QIODevice::WriteOnly | QIODevice::Unbuffered)) {
-        QMessageBox::critical(this, "Erreur", "Impossible d'ouvrir le fichier de sortie.");
-        return;
+        qDebug() << "Impossible d'ouvrir le fichier de sortie";
+        return false;
     }
 
     // Écrire le sel, l'IV et le hash original (32 octets)
@@ -326,8 +348,8 @@ void MainWindow::encryptFile(const QString &inputFile, const QString &outputFile
     // Initialiser le contexte de chiffrement
     EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
     if (!ctx) {
-        QMessageBox::critical(this, "Erreur", "Erreur lors de l'initialisation du contexte de chiffrement.");
-        return;
+        qDebug() << "Erreur lors de l'initialisation du contexte de chiffrement";
+        return false;
     }
 
     const EVP_CIPHER *cipher = nullptr;
@@ -341,16 +363,16 @@ void MainWindow::encryptFile(const QString &inputFile, const QString &outputFile
     }
 
     if (!EVP_EncryptInit_ex(ctx, cipher, nullptr, nullptr, nullptr)) {
-        QMessageBox::critical(this, "Erreur", "Erreur lors de l'initialisation du chiffrement.");
+        qDebug() << "Erreur lors de l'initialisation du chiffrement";
         EVP_CIPHER_CTX_free(ctx);
-        return;
+        return false;
     }
 
     // Configurer la clé et l'IV
     if (!EVP_EncryptInit_ex(ctx, nullptr, nullptr, key, iv)) {
-        QMessageBox::critical(this, "Erreur", "Erreur lors de la configuration de la clé et de l'IV.");
+        qDebug() << "Erreur lors de la configuration de la clé et de l'IV";
         EVP_CIPHER_CTX_free(ctx);
-        return;
+        return false;
     }
 
     // Lire et chiffrer les données
@@ -361,27 +383,27 @@ void MainWindow::encryptFile(const QString &inputFile, const QString &outputFile
 
     while ((bytesRead = inFile.read(reinterpret_cast<char *>(inBuffer), sizeof(inBuffer))) > 0) {
         if (!EVP_EncryptUpdate(ctx, outBuffer, &outLen, inBuffer, bytesRead)) {
-            QMessageBox::critical(this, "Erreur", "Erreur lors du chiffrement.");
+            qDebug() << "Erreur lors de chiffrement";
             EVP_CIPHER_CTX_free(ctx);
-            return;
+            return false;
         }
         outFile.write(reinterpret_cast<const char *>(outBuffer), outLen);
     }
 
     // Finaliser le chiffrement
     if (!EVP_EncryptFinal_ex(ctx, outBuffer, &outLen)) {
-        QMessageBox::critical(this, "Erreur", "Erreur lors de la finalisation du chiffrement.");
+        qDebug() << "Erreur lors de la finalisation du chiffrement";
         EVP_CIPHER_CTX_free(ctx);
-        return;
+        return false;
     }
     outFile.write(reinterpret_cast<const char *>(outBuffer), outLen);
 
     // Obtenir et écrire le tag d'authentification
     unsigned char tag[GCM_TAG_LENGTH];
     if (!EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_GET_TAG, GCM_TAG_LENGTH, tag)) {
-        QMessageBox::critical(this, "Erreur", "Erreur lors de la génération du tag.");
+        qDebug() << "Erreur lors de la génération du tag";
         EVP_CIPHER_CTX_free(ctx);
-        return;
+        return false;
     }
     outFile.write(reinterpret_cast<const char *>(tag), sizeof(tag));
 
@@ -390,7 +412,9 @@ void MainWindow::encryptFile(const QString &inputFile, const QString &outputFile
     inFile.close();
     outFile.close();
 
-    QMessageBox::information(this, "Succès", "Fichier chiffré avec succès !");
+    statusBar()->showMessage("Chiffrement terminé.");
+
+    return true;
 }
 
 
@@ -407,33 +431,33 @@ bool MainWindow::decryptFile(const QString &inputFile, const QString &outputFile
     QFile outFile(outputFile);
 
     if (!inFile.open(QIODevice::ReadOnly | QIODevice::Unbuffered)) {
-        QMessageBox::critical(this, "Erreur", "Impossible d'ouvrir le fichier chiffré.");
+        qDebug() << "Impossible d'ouvrir le fichier d'entrée";
         return false;
     }
 
     if (!outFile.open(QIODevice::WriteOnly | QIODevice::Unbuffered)) {
-        QMessageBox::critical(this, "Erreur", "Impossible d'ouvrir le fichier de sortie.");
+        qDebug() << "Impossible d'ouvrir le fichier de sortie";
         return false;
     }
 
     // Lire le sel
     unsigned char salt[16];
     if (inFile.read(reinterpret_cast<char *>(salt), sizeof(salt)) != sizeof(salt)) {
-        QMessageBox::critical(this, "Erreur", "Erreur lors de la lecture du sel.");
+        qDebug() << "Erreur lors de la lecture du sel";
         return false;
     }
 
     // Lire l'IV
     unsigned char iv[GCM_IV_LENGTH];
     if (inFile.read(reinterpret_cast<char *>(iv), sizeof(iv)) != sizeof(iv)) {
-        QMessageBox::critical(this, "Erreur", "Erreur lors de la lecture de l'IV.");
+        qDebug() << "Erreur lors de la lecture de l'IV";
         return false;
     }
 
     // Lire le hash
     QByteArray storedHash = inFile.read(32);
     if (storedHash.size() != 32) {
-        QMessageBox::critical(this, "Erreur", "Erreur lors de la lecture du hash original.");
+        qDebug() << "Erreur lors de la lecture du hash original";
         return false;
     }
 
@@ -448,7 +472,7 @@ bool MainWindow::decryptFile(const QString &inputFile, const QString &outputFile
             EVP_sha256(),
             AES_KEY_LENGTH,
             key)) {
-        QMessageBox::critical(this, "Erreur", "Erreur lors de la dérivation de la clé.");
+        qDebug() << "Erreur lors de la dérivation de la clé";
         return false;
     }
 
@@ -456,7 +480,7 @@ bool MainWindow::decryptFile(const QString &inputFile, const QString &outputFile
     // Initialiser le contexte de déchiffrement
     EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
     if (!ctx) {
-        QMessageBox::critical(this, "Erreur", "Erreur lors de l'initialisation du contexte de déchiffrement.");
+        qDebug() << "Erreur lors de l'initialisation du contexte de déchiffrement";
         return false;
     }
 
@@ -471,7 +495,7 @@ bool MainWindow::decryptFile(const QString &inputFile, const QString &outputFile
     }
 
     if (!EVP_DecryptInit_ex(ctx, cipher, nullptr, key, iv)) {
-        QMessageBox::critical(this, "Erreur", "Erreur lors de la configuration de la clé et de l'IV.");
+        qDebug() << "Erreur lors de la configuration de la clé et de l'IV";
         EVP_CIPHER_CTX_free(ctx);
         return false;
     }
@@ -481,7 +505,7 @@ bool MainWindow::decryptFile(const QString &inputFile, const QString &outputFile
 
     unsigned char tag[GCM_TAG_LENGTH];
     if (inFile.read(reinterpret_cast<char *>(tag), sizeof(tag)) != sizeof(tag)) {
-        QMessageBox::critical(this, "Erreur", "Erreur lors de la lecture du tag d'authentification.");
+        qDebug() << "Erreur lors de la lecture du tag d'authentification";
         EVP_CIPHER_CTX_free(ctx);
         return false;
     }
@@ -504,6 +528,8 @@ bool MainWindow::decryptFile(const QString &inputFile, const QString &outputFile
     // Revenir au début du ciphertext (après sel et IV)
     inFile.seek(sizeof(salt) + sizeof(iv) + storedHash.size());
 
+    statusBar()->showMessage("Déchiffrement en cours...");
+
     while (totalRead < ciphertextLength) {
         int bytesToRead = qMin(qint64(sizeof(inBuffer)), ciphertextLength - totalRead);
         bytesRead = inFile.read(reinterpret_cast<char *>(inBuffer), bytesToRead);
@@ -511,7 +537,7 @@ bool MainWindow::decryptFile(const QString &inputFile, const QString &outputFile
             break;
 
         if (!EVP_DecryptUpdate(ctx, outBuffer, &outLen, inBuffer, bytesRead)) {
-            QMessageBox::critical(this, "Erreur", "Erreur lors du déchiffrement des données.");
+            qDebug() << "Erreur lors du déchiffrement des données";
             EVP_CIPHER_CTX_free(ctx);
             return false;
         }
@@ -522,8 +548,7 @@ bool MainWindow::decryptFile(const QString &inputFile, const QString &outputFile
 
     int finalOutLen;
     if (!EVP_DecryptFinal_ex(ctx, outBuffer, &finalOutLen)) {
-        qDebug() << "Erreur : EVP_DecryptFinal_ex a échoué. Taille du dernier bloc : " << finalOutLen;
-        QMessageBox::critical(this, "Erreur", "Le mot de passe est incorrect ou les données sont corrompues.");
+        qDebug() << "Le mot de passe est incorrect ou les données sont corrompues";
         EVP_CIPHER_CTX_free(ctx);
         return false;
     }
@@ -531,13 +556,16 @@ bool MainWindow::decryptFile(const QString &inputFile, const QString &outputFile
     // Calculer le hash du fichier déchiffré
     QByteArray decryptedHash = computeFileHash(outputFile);
     if (decryptedHash != storedHash) {  // On compare ensuite ce hash avec le hash original
-        QMessageBox::warning(this, "Erreur d'intégrité", "Le fichier déchiffré diffère de l'original.");
+        qDebug() << "Le fichier déchiffré diffère de l'orignal (comparaison des hash)";
+        return false;
     }
 
     // Nettoyer
     EVP_CIPHER_CTX_free(ctx);
     inFile.close();
     outFile.close();
+
+    statusBar()->showMessage("Déchiffrement terminé.");
 
     return true;
 }
@@ -566,36 +594,37 @@ QByteArray MainWindow::computeFileHash(const QString &filePath)
 
 
 // FONCTIONS POUR L'HISTORIQUE
-void MainWindow::addHistoryEntry(const QString &operation, const QString &inputFile, const QString &outputFile)
+void MainWindow::addHistoryEntry(const QString &operation, const QString &inputFile, const QString &outputFile, bool success)
 {
     QSettings settings("PFE", "chiffrementAES");
     bool historyEnabled = settings.value("historyEnabled", true).toBool();
 
     // Si l'historique n'est pas activé, ne rien faire
-    if (!historyEnabled) {
-        qDebug() << "Historique désactivé, aucune entrée enregistrée.";
-        return;
+    if (historyEnabled) {
+        // Récupérer l'historique existant sous forme de JSON (en chaîne)
+        QString historyJson = settings.value("operationHistory", "[]").toString();
+        QJsonDocument doc = QJsonDocument::fromJson(historyJson.toUtf8());
+        QJsonArray historyArray = doc.array();
+
+        // Créer une nouvelle entrée
+        QJsonObject entry;
+        entry["date"] = QDateTime::currentDateTime().toString(Qt::ISODate);
+        entry["operation"] = operation; // "Chiffrement" ou "Déchiffrement"
+        entry["inputFile"] = inputFile;
+        entry["outputFile"] = outputFile;
+        entry["status"]     = success ? "Succès" : "Échec";
+
+        // Ajoute l'entrée à l'historique
+        historyArray.append(entry);
+
+        // Sauvegarder l'historique mis à jour
+        QJsonDocument newDoc(historyArray);
+        settings.setValue("operationHistory", newDoc.toJson(QJsonDocument::Compact));
+        settings.sync();
+
+        // Charger l'historique dans l'interface
+        loadHistory();
     }
-
-    // Récupérer l'historique existant sous forme de JSON (en chaîne)
-    QString historyJson = settings.value("operationHistory", "[]").toString();
-    QJsonDocument doc = QJsonDocument::fromJson(historyJson.toUtf8());
-    QJsonArray historyArray = doc.array();
-
-    // Créer une nouvelle entrée
-    QJsonObject entry;
-    entry["date"] = QDateTime::currentDateTime().toString(Qt::ISODate);
-    entry["operation"] = operation; // "Chiffrement" ou "Déchiffrement"
-    entry["inputFile"] = inputFile;
-    entry["outputFile"] = outputFile;
-
-    // Ajoute l'entrée à l'historique
-    historyArray.append(entry);
-
-    // Sauvegarder l'historique mis à jour
-    QJsonDocument newDoc(historyArray);
-    settings.setValue("operationHistory", newDoc.toJson(QJsonDocument::Compact));
-    settings.sync();
 }
 
 
@@ -618,13 +647,14 @@ void MainWindow::loadHistory()
         QTableWidgetItem *opItem = new QTableWidgetItem(entry["operation"].toString());
         QTableWidgetItem *inputItem = new QTableWidgetItem(entry["inputFile"].toString());
         QTableWidgetItem *outputItem = new QTableWidgetItem(entry["outputFile"].toString());
+        QTableWidgetItem *statusItem = new QTableWidgetItem(entry["status"].toString());
 
         m_historyTableWidget->setItem(i, 0, dateItem);
         m_historyTableWidget->setItem(i, 1, opItem);
         m_historyTableWidget->setItem(i, 2, inputItem);
         m_historyTableWidget->setItem(i, 3, outputItem);
+        m_historyTableWidget->setItem(i, 4, statusItem);
     }
-    qDebug() << "Historique chargé : " << historyArray.size() << " entrées.";
 }
 
 
@@ -648,6 +678,4 @@ void MainWindow::clearHistory()
         m_historyTableWidget->clearContents();
         m_historyTableWidget->setRowCount(0);
     }
-
-    QMessageBox::information(this, "Historique", "L'historique a été effacé.");
 }

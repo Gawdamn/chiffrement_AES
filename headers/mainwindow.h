@@ -31,10 +31,10 @@ private slots:
 
 private:
     Ui::MainWindow *ui;
-    void encryptFile(const QString &inputFile, const QString &outputFile, const QString &password);
+    bool encryptFile(const QString &inputFile, const QString &outputFile, const QString &password);
     bool decryptFile(const QString &inputFile, const QString &outputFile, const QString &password);
     QByteArray computeFileHash(const QString &filePath);
-    void addHistoryEntry(const QString &operation, const QString &inputFile, const QString &outputFile);
+    void addHistoryEntry(const QString &operation, const QString &inputFile, const QString &outputFile, bool success);
     void loadHistory();
     void clearHistory();
     QByteArray m_originalHash;

@@ -162,7 +162,7 @@
      </font>
     </property>
     <property name="title">
-     <string>Menu</string>
+     <string/>
     </property>
     <property name="icon">
      <iconset resource="../resources/resources.qrc">
