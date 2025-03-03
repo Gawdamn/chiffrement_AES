@@ -2,26 +2,7 @@
 #include "ui_mainwindow.h"
 #include "headers/passworddialog.h"
 #include "headers/optionsdialog.h"
-#include <QFileDialog>
-#include <QMessageBox>
-#include <QDialog>
-#include <openssl/evp.h>
-#include <openssl/rand.h>
-#include <QTextStream>
-#include <QDebug>
-#include <QFile>
-#include <QCryptographicHash>
-#include <QTemporaryFile>
-#include <QSettings>
-#include <QJsonDocument>
-#include <QJsonArray>
-#include <QJsonObject>
-#include <QDateTime>
-#include <QTableWidgetItem>
-#include <QTableWidget>
-#include <QProgressBar>
-#include <QtConcurrent>
-#include <QFutureWatcher>
+
 
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow)
@@ -66,6 +47,15 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     this->setCentralWidget(tabWidget);
 
     loadHistory();
+
+    m_progressBar = new QProgressBar(this);
+    m_progressBar->setRange(0, 100);
+    m_progressBar->setValue(0);
+    m_progressBar->setVisible(false);  // Masquée par défaut
+    statusBar()->addPermanentWidget(m_progressBar);
+
+    // Connecter le signal de progression à la barre de progression (connexion en mode Qt::QueuedConnection)
+    connect(this, &MainWindow::progressChanged, m_progressBar, &QProgressBar::setValue);
 
     statusBar()->showMessage("Prêt");
 
@@ -168,6 +158,9 @@ void MainWindow::on_encryptButton_clicked()
         bool success = watcher->result(); // Récupère le résultat du chiffrement
         addHistoryEntry("Chiffrement", inputFile, outputFile, success);
         watcher->deleteLater();
+        if(success) {
+            QMessageBox::information(this, "Succès", "Fichier chiffré avec succès !");
+        }
     });
 
     QFuture<bool> future = QtConcurrent::run(this, &MainWindow::encryptFile, inputFile, outputFile, password);
@@ -285,8 +278,6 @@ void MainWindow::on_decryptButton_clicked()
 // FONCTION DE CHIFFREMENT
 bool MainWindow::encryptFile(const QString &inputFile, const QString &outputFile, const QString &password)
 {
-    statusBar()->showMessage("Chiffrement en cours...");
-
     const int AES_KEY_LENGTH = m_aesKeySize / 8;  // taille de la clé AES utilisée (division par 8 pour la conversion en octets)
     const int AES_BLOCK_SIZE = 16; // Taille d'un bloc AES
     const int GCM_IV_LENGTH = 12;  // Taille de l'IV pour GCM
@@ -375,11 +366,19 @@ bool MainWindow::encryptFile(const QString &inputFile, const QString &outputFile
         return false;
     }
 
+    statusBar()->showMessage("Chiffrement en cours...");
+
     // Lire et chiffrer les données
+    qint64 totalFileSize = inFile.size();
+    qint64 totalRead = 0;
     unsigned char inBuffer[4096];
     unsigned char outBuffer[4096 + AES_BLOCK_SIZE];
-    int bytesRead, bytesWritten;
+    int bytesRead;
     int outLen;
+
+    // Dès le début, afficher la barre de progression en 0%
+    emit progressChanged(0);
+    QMetaObject::invokeMethod(m_progressBar, "setVisible", Qt::QueuedConnection, Q_ARG(bool, true));
 
     while ((bytesRead = inFile.read(reinterpret_cast<char *>(inBuffer), sizeof(inBuffer))) > 0) {
         if (!EVP_EncryptUpdate(ctx, outBuffer, &outLen, inBuffer, bytesRead)) {
@@ -387,6 +386,9 @@ bool MainWindow::encryptFile(const QString &inputFile, const QString &outputFile
             EVP_CIPHER_CTX_free(ctx);
             return false;
         }
+        totalRead += bytesRead;
+        int progress = static_cast<int>((totalRead * 100) / totalFileSize);
+        emit progressChanged(progress);     // Mise à jour de la barre de progression
         outFile.write(reinterpret_cast<const char *>(outBuffer), outLen);
     }
 
@@ -406,6 +408,10 @@ bool MainWindow::encryptFile(const QString &inputFile, const QString &outputFile
         return false;
     }
     outFile.write(reinterpret_cast<const char *>(tag), sizeof(tag));
+
+    // Masquer la barre de progression à la fin
+    QMetaObject::invokeMethod(m_progressBar, "setVisible", Qt::QueuedConnection, Q_ARG(bool, false));
+    emit progressChanged(100);
 
     // Nettoyer et fermer les fichiers
     EVP_CIPHER_CTX_free(ctx);
@@ -514,6 +520,8 @@ bool MainWindow::decryptFile(const QString &inputFile, const QString &outputFile
     EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_TAG, GCM_TAG_LENGTH, tag);
 
 
+    statusBar()->showMessage("Déchiffrement en cours...");
+
     // Calculer la longueur du ciphertext.
     // Le fichier chiffré est structuré comme suit :
     // [salt (16 octets)] [IV (12 octets)] [hash (32 octets)] [ciphertext] [tag (16 octets)]
@@ -525,17 +533,18 @@ bool MainWindow::decryptFile(const QString &inputFile, const QString &outputFile
     unsigned char outBuffer[4096];
     int bytesRead, outLen;
 
+    // Afficher la barre de progression au début
+    emit progressChanged(0);
+    QMetaObject::invokeMethod(m_progressBar, "setVisible", Qt::QueuedConnection, Q_ARG(bool, true));
+
     // Revenir au début du ciphertext (après sel et IV)
     inFile.seek(sizeof(salt) + sizeof(iv) + storedHash.size());
-
-    statusBar()->showMessage("Déchiffrement en cours...");
 
     while (totalRead < ciphertextLength) {
         int bytesToRead = qMin(qint64(sizeof(inBuffer)), ciphertextLength - totalRead);
         bytesRead = inFile.read(reinterpret_cast<char *>(inBuffer), bytesToRead);
         if (bytesRead <= 0)
             break;
-
         if (!EVP_DecryptUpdate(ctx, outBuffer, &outLen, inBuffer, bytesRead)) {
             qDebug() << "Erreur lors du déchiffrement des données";
             EVP_CIPHER_CTX_free(ctx);
@@ -543,8 +552,9 @@ bool MainWindow::decryptFile(const QString &inputFile, const QString &outputFile
         }
         outFile.write(reinterpret_cast<const char *>(outBuffer), outLen);
         totalRead += bytesRead;
+        int progress = static_cast<int>((totalRead * 100) / ciphertextLength);
+        emit progressChanged(progress);
     }
-
 
     int finalOutLen;
     if (!EVP_DecryptFinal_ex(ctx, outBuffer, &finalOutLen)) {
@@ -559,6 +569,9 @@ bool MainWindow::decryptFile(const QString &inputFile, const QString &outputFile
         qDebug() << "Le fichier déchiffré diffère de l'orignal (comparaison des hash)";
         return false;
     }
+
+    QMetaObject::invokeMethod(m_progressBar, "setVisible", Qt::QueuedConnection, Q_ARG(bool, false));
+    emit progressChanged(100);
 
     // Nettoyer
     EVP_CIPHER_CTX_free(ctx);

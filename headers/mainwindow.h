@@ -1,8 +1,26 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
-
 #include <QMainWindow>
+#include <QFileDialog>
+#include <QMessageBox>
+#include <QDialog>
+#include <openssl/evp.h>
+#include <openssl/rand.h>
+#include <QTextStream>
+#include <QDebug>
+#include <QFile>
+#include <QCryptographicHash>
+#include <QTemporaryFile>
+#include <QSettings>
+#include <QJsonDocument>
+#include <QJsonArray>
+#include <QJsonObject>
+#include <QDateTime>
+#include <QTableWidgetItem>
 #include <QTableWidget>
+#include <QProgressBar>
+#include <QtConcurrent>
+#include <QFutureWatcher>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -17,6 +35,9 @@ class MainWindow : public QMainWindow
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
+
+signals:
+    void progressChanged(int value);
 
 private slots:
     void on_pushButton_clicked();
@@ -41,5 +62,6 @@ private:
     int m_aesKeySize; // 128, 192 ou 256 bits
     bool m_deleteOriginal; // false par défaut
     QTableWidget *m_historyTableWidget;
+    QProgressBar *m_progressBar;
 };
 #endif // MAINWINDOW_H
