@@ -4,6 +4,8 @@
 *.exe
 *.dll
 *.so
-*.pro
 *.pro.user
 *.pro.user.*
+Makefile
+ChiffrAES
+.qmake.stash

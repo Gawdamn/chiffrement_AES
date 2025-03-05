@@ -64,10 +64,9 @@ void OptionsDialog::on_buttonBox_accepted()
     emit originalDeletionPreferenceChanged(deleteOriginal);
 
 
-    bool historyEnabled = ui->enableHistoryCheckBox->isChecked();
+    bool historyEnabled = ui->enableHistoryCheckBox->isChecked();   // Récupérér l'état de la checkbox pour activer l'historique
     settings.setValue("historyEnabled", historyEnabled);
     settings.sync();
-    emit historyEnabledChanged(historyEnabled);
 
     accept();
 }

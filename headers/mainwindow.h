@@ -9,7 +9,6 @@
 #include <QTextStream>
 #include <QDebug>
 #include <QFile>
-#include <QCryptographicHash>
 #include <QTemporaryFile>
 #include <QSettings>
 #include <QJsonDocument>
@@ -21,6 +20,8 @@
 #include <QProgressBar>
 #include <QtConcurrent>
 #include <QFutureWatcher>
+#include "headers/cryptomodel.h"
+#include "headers/historymodel.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -42,6 +43,8 @@ signals:
 private slots:
     void on_pushButton_clicked();
 
+    void on_clearHistoryButton_clicked();
+
     void on_actionA_propos_triggered();
 
     void on_actionOptions_triggered();
@@ -50,18 +53,17 @@ private slots:
 
     void on_decryptButton_clicked();
 
+    void updateProgressBar(int value);
+
+    void setVisibleProgressBar(bool appears);
+
 private:
     Ui::MainWindow *ui;
-    bool encryptFile(const QString &inputFile, const QString &outputFile, const QString &password);
-    bool decryptFile(const QString &inputFile, const QString &outputFile, const QString &password);
-    QByteArray computeFileHash(const QString &filePath);
-    void addHistoryEntry(const QString &operation, const QString &inputFile, const QString &outputFile, bool success);
     void loadHistory();
-    void clearHistory();
-    QByteArray m_originalHash;
-    int m_aesKeySize; // 128, 192 ou 256 bits
     bool m_deleteOriginal; // false par défaut
     QTableWidget *m_historyTableWidget;
     QProgressBar *m_progressBar;
+    CryptoModel *m_cryptoModel;
+    HistoryModel *m_historyModel;
 };
 #endif // MAINWINDOW_H

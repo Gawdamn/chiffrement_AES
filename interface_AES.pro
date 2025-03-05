@@ -9,6 +9,8 @@ CONFIG += c++17
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+    src/cryptomodel.cpp \
+    src/historymodel.cpp \
     src/main.cpp \
     src/mainwindow.cpp \
     src/optionsdialog.cpp \
@@ -18,6 +20,8 @@ HEADERS += \
     headers/mainwindow.h \
     headers/passworddialog.h \
     headers/optionsdialog.h \
+    headers/cryptomodel.h \
+    headers/historymodel.h
 
 FORMS += \
     UI/mainwindow.ui \
@@ -35,3 +39,5 @@ RESOURCES += \
 LIBS += -lssl -lcrypto
 INCLUDEPATH += /usr/include/openssl
 QT += concurrent
+
+TARGET = "ChiffrAES"
