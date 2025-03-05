@@ -7,17 +7,17 @@ if ! cmake; then
     exit 1
 fi
 
-echo "Lancement de make..."
+echo "\n\nLancement de make..."
 if ! make; then
     echo "Erreur lors de l'exécution de make"
     exit 1
 fi
 
-echo "Nettoyage avec make clean..."
+echo "\n\nNettoyage avec make clean..."
 if ! make clean; then
     echo "Erreur lors de l'exécution de make clean"
     exit 1
 fi
 
 clear
-echo "Opérations terminées avec succès !\nVous pouvez désormais lancer l'application en cliquant sur l'excécutable nommé interface_AES"
+echo "Opérations terminées avec succès !\nVous pouvez désormais lancer l'application en cliquant sur l'excécutable nommé interface_AES\n\n"

@@ -39,7 +39,7 @@
          </font>
         </property>
         <property name="text">
-         <string> chiffrer un fichier</string>
+         <string> Chiffrer un fichier</string>
         </property>
         <property name="icon">
          <iconset resource="../resources/resources.qrc">
@@ -78,7 +78,7 @@
          </font>
         </property>
         <property name="text">
-         <string>déchiffer un fichier</string>
+         <string>Déchiffer un fichier</string>
         </property>
         <property name="icon">
          <iconset resource="../resources/resources.qrc">

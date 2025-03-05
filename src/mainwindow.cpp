@@ -38,7 +38,7 @@ MainWindow::MainWindow(QWidget *parent) :       // Constructeur de mainWindow
     historyLayout->addWidget(m_historyTableWidget);
 
     // Créer le bouton Clear History
-    QPushButton *clearHistoryButton = new QPushButton("Clear History", historyWidget);
+    QPushButton *clearHistoryButton = new QPushButton("Supprimer l'historique", historyWidget);
     historyLayout->addWidget(clearHistoryButton);
 
     // Connecter le signal du bouton à un slot on_clearHistoryButton_clicked() dans MainWindow
