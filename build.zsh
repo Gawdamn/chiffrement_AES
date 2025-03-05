@@ -2,7 +2,7 @@
 # Script pour lancer automatiquement cmake, make et make clean
 
 echo "Lancement de cmake..."
-if ! cmake; then
+if ! qmake; then
     echo "Erreur lors de l'exécution de cmake"
     exit 1
 fi
@@ -20,4 +20,4 @@ if ! make clean; then
 fi
 
 clear
-echo "Opérations terminées avec succès !\nVous pouvez désormais lancer l'application en cliquant sur l'excécutable nommé interface_AES\n\n"
+echo "\nOpérations terminées avec succès !\nVous pouvez désormais lancer l'application en cliquant sur l'excécutable nommé ChiffrAES\n\n"

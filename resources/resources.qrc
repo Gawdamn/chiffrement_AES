@@ -6,5 +6,6 @@
         <file>icon_menu.png</file>
         <file>icon_options.png</file>
         <file>icon_infos.png</file>
+        <file>ICON_AES.png</file>
     </qresource>
 </RCC>

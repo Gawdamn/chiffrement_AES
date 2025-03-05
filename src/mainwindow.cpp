@@ -12,7 +12,7 @@ MainWindow::MainWindow(QWidget *parent) :       // Constructeur de mainWindow
 {
     ui->setupUi(this);
 
-    setWindowIcon(QIcon("/home/nathan/Documents/IATIC5/projet_fin_etude/chiffrement_AES/resources/ICON_AES.png"));
+    setWindowIcon(QIcon(":/images/ICON_AES.png"));
 
     // Récupérer l'ancien widget central
     QWidget *oldCentral = this->centralWidget();
