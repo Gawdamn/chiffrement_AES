@@ -23,8 +23,6 @@ bool CryptoModel::encryptFile(const QString &inputFile, const QString &outputFil
     const int GCM_IV_LENGTH = 12;  // Taille de l'IV pour GCM
     const int GCM_TAG_LENGTH = 16; // Taille du tag pour GCM
 
-    qDebug() << "AES-KEY USED " << m_aesKeySize;
-
     // Générer un IV aléatoire pour GCM
     unsigned char iv[GCM_IV_LENGTH];
     if (!RAND_bytes(iv, sizeof(iv))) {
