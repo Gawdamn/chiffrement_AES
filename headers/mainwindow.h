@@ -49,6 +49,8 @@ private slots:
 
     void on_actionOptions_triggered();
 
+    void on_actionQuitter_triggered();
+
     void on_encryptButton_clicked();
 
     void on_decryptButton_clicked();

@@ -145,6 +145,13 @@ void MainWindow::on_actionOptions_triggered()
 
 
 
+void MainWindow::on_actionQuitter_triggered()
+{
+    QApplication::quit();
+}
+
+
+
 void MainWindow::on_encryptButton_clicked()
 {
     // Sélectionner le fichier à chiffrer (inputFile) et obtenir le mot de passe via la pop-up
@@ -157,6 +164,7 @@ void MainWindow::on_encryptButton_clicked()
 
     // Ouvrir la fenêtre pour saisir le mot de passe
     PasswordDialog passwordDialog(this);
+    passwordDialog.setEvaluateStrength(true); // Activer l'évaluation de la force du MDP pour le chiffrement
     if (passwordDialog.exec() != QDialog::Accepted)
         return;
     QString password = passwordDialog.getPassword();
@@ -208,6 +216,7 @@ void MainWindow::on_decryptButton_clicked()
 
     // Ouvrir la fenêtre pour saisir le mot de passe
     PasswordDialog passwordDialog(this);
+    passwordDialog.setEvaluateStrength(false); // Désactiver l'évaluation de la force du MDP pour le déchiffrement
     if (passwordDialog.exec() != QDialog::Accepted)
         return;
     QString password = passwordDialog.getPassword();

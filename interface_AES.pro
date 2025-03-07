@@ -14,14 +14,16 @@ SOURCES += \
     src/main.cpp \
     src/mainwindow.cpp \
     src/optionsdialog.cpp \
-    src/passworddialog.cpp
+    src/passworddialog.cpp \
+    src/passwordstrengthmodel.cpp
 
 HEADERS += \
     headers/mainwindow.h \
     headers/passworddialog.h \
     headers/optionsdialog.h \
     headers/cryptomodel.h \
-    headers/historymodel.h
+    headers/historymodel.h \
+    headers/passwordstrengthmodel.h
 
 FORMS += \
     UI/mainwindow.ui \

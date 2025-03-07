@@ -2,7 +2,6 @@
 #include "headers/mainwindow.h"
 #include <QFile>
 #include <QMessageBox>
-#include <QDebug>
 #include <openssl/evp.h>
 #include <openssl/rand.h>
 
