@@ -57,6 +57,8 @@ private slots:
 
     void setVisibleProgressBar(bool appears);
 
+    void handleCryptoError(const QString &errorMessage);
+
 private:
     Ui::MainWindow *ui;
     void loadHistory();

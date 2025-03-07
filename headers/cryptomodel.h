@@ -21,9 +21,10 @@ public:
     bool deleteOriginal;
 
 signals:
-    // Signal pour indiquer la progression
+    // Signal pour indiquer la progression et afficher la barre de progression
     void progressChanged(int value);
     void setVisible(bool appears);
+    void errorOccurred(const QString &errorMessage);    // Signal pour afficher les messages d'erreur
 };
 
 #endif // CRYPTOMODEL_H

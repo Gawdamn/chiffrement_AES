@@ -26,7 +26,7 @@ bool CryptoModel::encryptFile(const QString &inputFile, const QString &outputFil
     // Générer un IV aléatoire pour GCM
     unsigned char iv[GCM_IV_LENGTH];
     if (!RAND_bytes(iv, sizeof(iv))) {
-        qDebug() << "Erreur lors de la génération de l'IV";
+        emit errorOccurred("Erreur lors de la génération de l'IV");
         return false;
     }
 
@@ -35,7 +35,7 @@ bool CryptoModel::encryptFile(const QString &inputFile, const QString &outputFil
     unsigned char key[AES_KEY_LENGTH];
     unsigned char salt[16];
     if (!RAND_bytes(salt, sizeof(salt))) {
-        qDebug() << "Erreur lors de la génération du sel";
+        emit errorOccurred("Erreur lors de la génération du sel");
         return false;
     }
 
@@ -50,7 +50,7 @@ bool CryptoModel::encryptFile(const QString &inputFile, const QString &outputFil
             AES_KEY_LENGTH,                            // Taille de la clé AES (32 pour AES-256)
             key                                       // Clé générée
             )) {
-        qDebug() << "Erreur lors de la dérivation de la clé";
+        emit errorOccurred("Erreur lors de la dérivation de la clé");
         return false;
     }
 
@@ -60,13 +60,13 @@ bool CryptoModel::encryptFile(const QString &inputFile, const QString &outputFil
     QFile outFile(outputFile);
 
     if (!inFile.open(QIODevice::ReadOnly | QIODevice::Unbuffered)) {
-        qDebug() << "Impossible d'ouvrir le fichier d'entrée";
+        emit errorOccurred("Impossible d'ouvrir le fichier d'entrée");
         return false;
     }
     QByteArray originalHash = computeFileHash(inputFile);   // Calcul du hash du fichier original
 
     if (!outFile.open(QIODevice::WriteOnly | QIODevice::Unbuffered)) {
-        qDebug() << "Impossible d'ouvrir le fichier de sortie";
+        emit errorOccurred("Impossible d'ouvrir le fichier de sortie");
         return false;
     }
 
@@ -79,7 +79,7 @@ bool CryptoModel::encryptFile(const QString &inputFile, const QString &outputFil
     // Initialiser le contexte de chiffrement
     EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
     if (!ctx) {
-        qDebug() << "Erreur lors de l'initialisation du contexte de chiffrement";
+        emit errorOccurred("Erreur lors de l'initialisation du contexte de chiffrement");
         return false;
     }
 
@@ -94,14 +94,14 @@ bool CryptoModel::encryptFile(const QString &inputFile, const QString &outputFil
     }
 
     if (!EVP_EncryptInit_ex(ctx, cipher, nullptr, nullptr, nullptr)) {
-        qDebug() << "Erreur lors de l'initialisation du chiffrement";
+        emit errorOccurred("Erreur lors de l'initialisation du chiffrement");
         EVP_CIPHER_CTX_free(ctx);
         return false;
     }
 
     // Configurer la clé et l'IV
     if (!EVP_EncryptInit_ex(ctx, nullptr, nullptr, key, iv)) {
-        qDebug() << "Erreur lors de la configuration de la clé et de l'IV";
+        emit errorOccurred("Erreur lors de la configuration de la clé et de l'IV");
         EVP_CIPHER_CTX_free(ctx);
         return false;
     }
@@ -119,7 +119,7 @@ bool CryptoModel::encryptFile(const QString &inputFile, const QString &outputFil
 
     while ((bytesRead = inFile.read(reinterpret_cast<char *>(inBuffer), sizeof(inBuffer))) > 0) {
         if (!EVP_EncryptUpdate(ctx, outBuffer, &outLen, inBuffer, bytesRead)) {
-            qDebug() << "Erreur lors du chiffrement";
+            emit errorOccurred("Erreur lors du chiffrement");
             EVP_CIPHER_CTX_free(ctx);
             emit setVisible(false);
             return false;
@@ -132,7 +132,7 @@ bool CryptoModel::encryptFile(const QString &inputFile, const QString &outputFil
 
     // Finaliser le chiffrement
     if (!EVP_EncryptFinal_ex(ctx, outBuffer, &outLen)) {
-        qDebug() << "Erreur lors de la finalisation du chiffrement";
+        emit errorOccurred("Erreur lors de la finalisation du chiffrement");
         EVP_CIPHER_CTX_free(ctx);
         emit setVisible(false);
         return false;
@@ -142,7 +142,7 @@ bool CryptoModel::encryptFile(const QString &inputFile, const QString &outputFil
     // Obtenir et écrire le tag d'authentification
     unsigned char tag[GCM_TAG_LENGTH];
     if (!EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_GET_TAG, GCM_TAG_LENGTH, tag)) {
-        qDebug() << "Erreur lors de la génération du tag";
+        emit errorOccurred("Erreur lors de la génération du tag");
         EVP_CIPHER_CTX_free(ctx);
         emit setVisible(false);
         return false;
@@ -161,7 +161,7 @@ bool CryptoModel::encryptFile(const QString &inputFile, const QString &outputFil
     // Appliquer ou non la suppression du fichier original
     if (deleteOriginal) {
         if (!QFile::remove(inputFile)) {
-            qDebug() << "Échec de la suppression du fichier original.";
+            emit errorOccurred("Échec de la suppression du fichier original.");
         }
     }
     return true;
@@ -179,33 +179,33 @@ bool CryptoModel::decryptFile(const QString &inputFile, const QString &outputFil
     QFile outFile(outputFile);
 
     if (!inFile.open(QIODevice::ReadOnly | QIODevice::Unbuffered)) {
-        qDebug() << "Impossible d'ouvrir le fichier d'entrée";
+        emit errorOccurred("Impossible d'ouvrir le fichier d'entrée");
         return false;
     }
 
     if (!outFile.open(QIODevice::WriteOnly | QIODevice::Unbuffered)) {
-        qDebug() << "Impossible d'ouvrir le fichier de sortie";
+        emit errorOccurred("Impossible d'ouvrir le fichier de sortie");
         return false;
     }
 
     // Lire le sel
     unsigned char salt[16];
     if (inFile.read(reinterpret_cast<char *>(salt), sizeof(salt)) != sizeof(salt)) {
-        qDebug() << "Erreur lors de la lecture du sel";
+        emit errorOccurred("Erreur lors de la lecture du sel");
         return false;
     }
 
     // Lire l'IV
     unsigned char iv[GCM_IV_LENGTH];
     if (inFile.read(reinterpret_cast<char *>(iv), sizeof(iv)) != sizeof(iv)) {
-        qDebug() << "Erreur lors de la lecture de l'IV";
+        emit errorOccurred("Erreur lors de la lecture de l'IV");
         return false;
     }
 
     // Lire le hash
     QByteArray storedHash = inFile.read(32);
     if (storedHash.size() != 32) {
-        qDebug() << "Erreur lors de la lecture du hash original";
+        emit errorOccurred("Erreur lors de la lecture du hash original");
         return false;
     }
 
@@ -220,7 +220,7 @@ bool CryptoModel::decryptFile(const QString &inputFile, const QString &outputFil
             EVP_sha256(),
             AES_KEY_LENGTH,
             key)) {
-        qDebug() << "Erreur lors de la dérivation de la clé";
+        emit errorOccurred("Erreur lors de la dérivation de la clé");
         return false;
     }
 
@@ -228,7 +228,7 @@ bool CryptoModel::decryptFile(const QString &inputFile, const QString &outputFil
     // Initialiser le contexte de déchiffrement
     EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
     if (!ctx) {
-        qDebug() << "Erreur lors de l'initialisation du contexte de déchiffrement";
+        emit errorOccurred("Erreur lors de l'initialisation du contexte de déchiffrement");
         return false;
     }
 
@@ -243,7 +243,7 @@ bool CryptoModel::decryptFile(const QString &inputFile, const QString &outputFil
     }
 
     if (!EVP_DecryptInit_ex(ctx, cipher, nullptr, key, iv)) {
-        qDebug() << "Erreur lors de la configuration de la clé et de l'IV";
+        emit errorOccurred("Erreur lors de la configuration de la clé et de l'IV");
         EVP_CIPHER_CTX_free(ctx);
         return false;
     }
@@ -253,7 +253,7 @@ bool CryptoModel::decryptFile(const QString &inputFile, const QString &outputFil
 
     unsigned char tag[GCM_TAG_LENGTH];
     if (inFile.read(reinterpret_cast<char *>(tag), sizeof(tag)) != sizeof(tag)) {
-        qDebug() << "Erreur lors de la lecture du tag d'authentification";
+        emit errorOccurred("Erreur lors de la lecture du tag d'authentification");
         EVP_CIPHER_CTX_free(ctx);
         return false;
     }
@@ -285,7 +285,7 @@ bool CryptoModel::decryptFile(const QString &inputFile, const QString &outputFil
         if (bytesRead <= 0)
             break;
         if (!EVP_DecryptUpdate(ctx, outBuffer, &outLen, inBuffer, bytesRead)) {
-            qDebug() << "Erreur lors du déchiffrement des données";
+            emit errorOccurred("Erreur lors du déchiffrement des données");
             EVP_CIPHER_CTX_free(ctx);
             emit setVisible(false);
             return false;
@@ -298,7 +298,7 @@ bool CryptoModel::decryptFile(const QString &inputFile, const QString &outputFil
 
     int finalOutLen;
     if (!EVP_DecryptFinal_ex(ctx, outBuffer, &finalOutLen)) {
-        qDebug() << "Le mot de passe est incorrect ou les données sont corrompues";
+        emit errorOccurred("Le mot de passe est incorrect ou les données sont corrompues");
         EVP_CIPHER_CTX_free(ctx);
         emit setVisible(false);
         return false;
@@ -307,7 +307,7 @@ bool CryptoModel::decryptFile(const QString &inputFile, const QString &outputFil
     // Calculer le hash du fichier déchiffré
     QByteArray decryptedHash = computeFileHash(outputFile);
     if (decryptedHash != storedHash) {  // On compare ensuite ce hash avec le hash original
-        qDebug() << "Le fichier déchiffré diffère de l'orignal (comparaison des hash)";
+        emit errorOccurred("Le fichier déchiffré diffère de l'orignal (comparaison des hash)");
         emit setVisible(false);
         return false;
     }

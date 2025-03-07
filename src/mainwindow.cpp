@@ -57,6 +57,9 @@ MainWindow::MainWindow(QWidget *parent) :       // Constructeur de mainWindow
     connect(m_historyModel, &HistoryModel::historyUpdated, this, &MainWindow::loadHistory);
     loadHistory();
 
+    // Connecter le signal pour transmettre les messages d'erreur à l'interface principale
+    connect(m_cryptoModel, &CryptoModel::errorOccurred, this, &MainWindow::handleCryptoError);
+
     // Connecter le signal progressChanged pour mettre à jour la barre de progression
     connect(m_cryptoModel, &CryptoModel::progressChanged, this, &MainWindow::updateProgressBar);
 
@@ -174,11 +177,14 @@ void MainWindow::on_encryptButton_clicked()
     QFutureWatcher<bool> *watcher = new QFutureWatcher<bool>(this);
     connect(watcher, &QFutureWatcher<bool>::finished, this, [this, watcher, inputFile, outputFile]() {
         bool success = watcher->result(); // Récupère le résultat du chiffrement
-        m_historyModel->addEntry("Déchiffrement", inputFile, outputFile, success);
+        m_historyModel->addEntry("Chiffrement", inputFile, outputFile, success);
         watcher->deleteLater();
         if(success) {
             statusBar()->showMessage("Chiffrement terminé.");
             QMessageBox::information(this, "Succès", "Fichier chiffré avec succès !");
+        }
+        else {
+            statusBar()->showMessage("Chiffement échoué.");
         }
     });
 
@@ -233,7 +239,7 @@ void MainWindow::on_decryptButton_clicked()
         if (!success) {
             // En cas d'échec, on supprime le fichier temporaire et on affiche un message
             QFile::remove(tempFilePath);
-            statusBar()->showMessage("Déchiffrement échoué ou corrompu.");
+            statusBar()->showMessage("Déchiffrement échoué");
             m_historyModel->addEntry("Déchiffrement", inputFile, tempFilePath, success);
             return;
         }
@@ -328,4 +334,11 @@ void MainWindow::loadHistory()
         m_historyTableWidget->setItem(i, 3, outputItem);
         m_historyTableWidget->setItem(i, 4, statusItem);
     }
+}
+
+
+
+void MainWindow::handleCryptoError(const QString &errorMessage)
+{
+    QMessageBox::critical(this, "Erreur", errorMessage);
 }
