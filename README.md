@@ -48,9 +48,14 @@ L'application suit une architecture **Modèle-Vue-Contrôleur (MVC)** pour sépa
    - Qt 5
    - OpenSSL
    - GCC (ou un autre compilateur C++)
-3. Ouvrez le projet dans **Qt Creator**.
-4. Configurez le kit de développement et compilez le projet.
-5. Exécutez l'application via Qt Creator ou en ligne de commande.
+3. Si vous utilisez le shell ZSH, lancez le script "build.zsh"
+   Sinon, lancez les commandes suivantes dans l'ordre:
+   ```bash
+   qmake
+   make
+   make clean
+   ```
+4. Il vous suffit maintenant de cliquer sur l'exécutable "ChiffrAES" qui a été généré pour lancer l'application!
 
 ---
 
