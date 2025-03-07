@@ -48,8 +48,8 @@ L'application suit une architecture **Modèle-Vue-Contrôleur (MVC)** pour sépa
    - Qt 5
    - OpenSSL
    - GCC (ou un autre compilateur C++)
-3. Si vous utilisez le shell ZSH, lancez le script "build.zsh"
-   Sinon, lancez les commandes suivantes dans l'ordre:
+3. Si vous utilisez le shell ZSH, lancez le script "build.zsh"  
+Sinon, lancez les commandes suivantes dans l'ordre:
    ```bash
    qmake
    make
