@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/usr/bin/env sh
 # Script pour lancer automatiquement cmake, make et make clean
 
 echo "Lancement de cmake..."
