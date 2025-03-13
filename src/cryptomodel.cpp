@@ -348,7 +348,6 @@ QByteArray CryptoModel::computeFileHash(const QString &filePath)
 
 void CryptoModel::setAesKeySize(int keySize) {
     m_aesKeySize = keySize;
-    // On peux ajouter ici des vérifications pour assurer une taille valide (128, 192, 256)
 }
 
 

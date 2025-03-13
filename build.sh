@@ -7,17 +7,17 @@ if ! qmake; then
     exit 1
 fi
 
-echo "\n\nLancement de make..."
+echo "Lancement de make..."
 if ! make; then
     echo "Erreur lors de l'exécution de make"
     exit 1
 fi
 
-echo "\n\nNettoyage avec make clean..."
+echo "Nettoyage avec make clean..."
 if ! make clean; then
     echo "Erreur lors de l'exécution de make clean"
     exit 1
 fi
 
 clear
-echo "\nOpérations terminées avec succès !\nVous pouvez désormais lancer l'application en cliquant sur l'excécutable nommé ChiffrAES\n\n"
+echo "Opérations terminées avec succès! Vous pouvez désormais démarrer l'application en lancant l'exécutable nommé ChiffrAES"
